@@ -4,7 +4,7 @@ import { addPlayer, getCampaign, patchPlayer, removePlayer, saveCampaign, upload
 type Mode = "combat" | "roam" | "map";
 type Role = "gm" | "player";
 type Player = { id: string; name: string; role: string; hp: number; sp: number; initial: string; art?: string; personaArt?: string };
-type ShadowData = { id: string; name: string; hp: number; threat: number; status: string; sprite?: string; x?: number; y?: number; width?: number; height?: number };
+type ShadowData = { id: string; name: string; hp: number; threat: number; status: string; sprite?: string; x?: number; y?: number };
 type Point = { title: string; detail: string };
 type Pin = { id: string; x: number; y: number; label: string; tooltip: string };
 type Campaign = {
@@ -36,50 +36,25 @@ function Mark({ children }: { children: React.ReactNode }) {
   return <span className="mark">{children}</span>;
 }
 
-function TransformBox({ x = 40, y = 40, width = 240, height = 320, disabled, onUpdate, children }: { x?: number; y?: number; width?: number; height?: number; disabled: boolean; onUpdate: (box: { x: number; y: number; width: number; height: number }) => void; children: ReactNode }) {
-  const [pos, setPos] = useState({ x, y, width, height });
-  const [hovered, setHovered] = useState(false);
+// Draggable 300x300 transparent shadow container with drop shadow
+function DraggableShadowBox({ x = 40, y = 40, disabled, onUpdate, children }: { x?: number; y?: number; disabled: boolean; onUpdate: (pos: { x: number; y: number }) => void; children: ReactNode }) {
+  const [pos, setPos] = useState({ x, y });
 
   useEffect(() => {
-    setPos({ x, y, width, height });
-  }, [x, y, width, height]);
+    setPos({ x, y });
+  }, [x, y]);
 
-  const startDrag = (e: MouseEvent<HTMLDivElement>, handle: string | null = null) => {
-    if (disabled) return;
+  const startDrag = (e: MouseEvent<HTMLDivElement>) => {
+    if (disabled || (e.target as HTMLElement).closest("input,button,label")) return;
     e.stopPropagation();
     e.preventDefault();
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const initialPos = { ...pos };
+    const startX = e.clientX - pos.x;
+    const startY = e.clientY - pos.y;
 
     const onMouseMove = (moveEvent: globalThis.MouseEvent) => {
-      const dx = moveEvent.clientX - startX;
-      const dy = moveEvent.clientY - startY;
-
-      setPos(() => {
-        let next = { ...initialPos };
-        if (!handle) {
-          next.x = initialPos.x + dx;
-          next.y = initialPos.y + dy;
-        } else {
-          if (handle.includes("right")) next.width = Math.max(160, initialPos.width + dx);
-          if (handle.includes("bottom")) next.height = Math.max(180, initialPos.height + dy);
-          if (handle.includes("left")) {
-            const newW = initialPos.width - dx;
-            if (newW >= 160) {
-              next.width = newW;
-              next.x = initialPos.x + dx;
-            }
-          }
-          if (handle.includes("top")) {
-            const newH = initialPos.height - dy;
-            if (newH >= 180) {
-              next.height = newH;
-              next.y = initialPos.y + dy;
-            }
-          }
-        }
-        return next;
+      setPos({
+        x: moveEvent.clientX - startX,
+        y: moveEvent.clientY - startY
       });
     };
 
@@ -98,20 +73,19 @@ function TransformBox({ x = 40, y = 40, width = 240, height = 320, disabled, onU
 
   return (
     <div 
-      onMouseEnter={() => setHovered(true)} 
-      onMouseLeave={() => setHovered(false)} 
-      style={{ position: "absolute", left: `${pos.x}px`, top: `${pos.y}px`, width: `${pos.width}px`, height: `${pos.height}px`, cursor: disabled ? "default" : "move", zIndex: 10 }} 
-      onMouseDown={(e) => startDrag(e, null)}
+      style={{ 
+        position: "absolute", 
+        left: `${pos.x}px`, 
+        top: `${pos.y}px`, 
+        width: "300px", 
+        height: "300px", 
+        cursor: disabled ? "default" : "move", 
+        zIndex: 10,
+        filter: "drop-shadow(6px 6px 0px var(--ink))"
+      }} 
+      onMouseDown={startDrag}
     >
       {children}
-      {!disabled && hovered && (
-        <div style={{ position: "absolute", inset: "-4px", border: "2px dashed var(--mint)", pointerEvents: "none" }}>
-          <div onMouseDown={(e) => startDrag(e, "top-left")} style={{ position: "absolute", top: -6, left: -6, width: 12, height: 12, background: "var(--ink)", border: "2px solid var(--mint)", pointerEvents: "auto", cursor: "nwse-resize" }} />
-          <div onMouseDown={(e) => startDrag(e, "top-right")} style={{ position: "absolute", top: -6, right: -6, width: 12, height: 12, background: "var(--ink)", border: "2px solid var(--mint)", pointerEvents: "auto", cursor: "nesw-resize" }} />
-          <div onMouseDown={(e) => startDrag(e, "bottom-left")} style={{ position: "absolute", bottom: -6, left: -6, width: 12, height: 12, background: "var(--ink)", border: "2px solid var(--mint)", pointerEvents: "auto", cursor: "nesw-resize" }} />
-          <div onMouseDown={(e) => startDrag(e, "bottom-right")} style={{ position: "absolute", bottom: -6, right: -6, width: 12, height: 12, background: "var(--ink)", border: "2px solid var(--mint)", pointerEvents: "auto", cursor: "nwse-resize" }} />
-        </div>
-      )}
     </div>
   );
 }
@@ -230,8 +204,17 @@ function App() {
 
   const addShadow = () => {
     updateGm((next) => {
-      next.shadows.push({ id: crypto.randomUUID(), name: `Shadow ${next.shadows.length + 1}`, hp: 100, threat: 1, status: "Normal", x: 40 + next.shadows.length * 180, y: 60, width: 240, height: 320 });
+      next.shadows.push({ 
+        id: crypto.randomUUID(), 
+        name: `Shadow ${next.shadows.length + 1}`, 
+        hp: 100, 
+        threat: 1, 
+        status: "Normal", 
+        x: 40 + next.shadows.length * 180, 
+        y: 60 
+      });
     });
+    addToast("SHADOW ADDED", "success");
   };
 
   const handleAddNewPlayer = async () => {
@@ -377,22 +360,55 @@ function App() {
               {mode === "combat" && <div className={`dungeon-scene ${c.battle.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.battle.background ? { backgroundImage: `url(${c.battle.background})`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}>
                 {!c.battle.background && <><div className="ceiling-lines" /><div className="corridor-end"><span /><span /></div><div className="floor-grid" /></>}
                 {c.shadows.map((shadow, index) => (
-                  <TransformBox key={shadow.id} x={shadow.x ?? (40 + index * 180)} y={shadow.y ?? 50} width={shadow.width ?? 240} height={shadow.height ?? 320} disabled={!isGm} onUpdate={(box) => updateGm((next) => { next.shadows[index].x = box.x; next.shadows[index].y = box.y; next.shadows[index].width = box.width; next.shadows[index].height = box.height; })}>
-                    <div className="enemy-unit" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "var(--paper)", border: "2px solid var(--ink)", padding: "8px", boxSizing: "border-box" }}>
-                      <div className="enemy-name" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px" }}>
-                        <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ flex: 1, minWidth: 0 }} />
+                  <DraggableShadowBox key={shadow.id} x={shadow.x ?? (40 + index * 180)} y={shadow.y ?? 50} disabled={!isGm} onUpdate={(p) => updateGm((next) => { next.shadows[index].x = p.x; next.shadows[index].y = p.y; })}>
+                    <div className="enemy-unit" style={{ width: "300px", height: "300px", display: "flex", flexDirection: "column", background: "transparent", border: "none", padding: "8px", boxSizing: "border-box" }}>
+                      
+                      {/* Name & HP Header */}
+                      <div className="enemy-name" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px", background: "var(--paper)", border: "2px solid var(--ink)", padding: "4px 6px" }}>
+                        <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ flex: 1, minWidth: 0, background: "transparent", border: "none" }} />
                         <div className="enemy-hp" style={{ flex: 1 }}><i style={{ width: `${shadow.hp}%` }} /><span>{shadow.hp} HP</span></div>
                       </div>
-                      <div className={`shadow-figure ${shadow.sprite ? "has-sprite" : ""}`} style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", marginTop: "6px", minHeight: "120px" }}>
+
+                      {/* Transparent Image / Sprite Frame */}
+                      <div className={`shadow-figure ${shadow.sprite ? "has-sprite" : ""}`} style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", marginTop: "6px" }}>
                         {shadow.sprite ? <img src={shadow.sprite} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <><i className="horn left" /><i className="horn right" /><span className="shadow-head"><b /><b /></span><span className="shadow-body" /><i className="shadow-arm left" /><i className="shadow-arm right" /><i className="shadow-leg left" /><i className="shadow-leg right" /></>}
                       </div>
-                      {isGm && <label style={{ padding: "6px", fontSize: "11px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)", display: "block", marginTop: "6px" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
-                      <div className="enemy-status" style={{ marginTop: "6px" }}><span>TL</span><input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} /><input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} /></div>
+
+                      {/* GM Image Swap Button */}
+                      {isGm && <label style={{ padding: "6px", fontSize: "11px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)", display: "block", marginTop: "6px", fontFamily: "Bebas Neue, sans-serif" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
+                      
+                      {/* Status and Controls */}
+                      <div className="enemy-status" style={{ marginTop: "6px", background: "var(--paper)", border: "2px solid var(--ink)", padding: "4px" }}><span>TL</span><input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} /><input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} /></div>
                       {isGm && <div className="shadow-controls" style={{ display: "flex", gap: "4px", marginTop: "6px" }}><button type="button" onClick={() => moveShadow(index, "left")} disabled={index === 0}>‹</button><button type="button" onClick={() => updateGm((next) => next.shadows.splice(index, 1))}>×</button><button type="button" onClick={() => moveShadow(index, "right")} disabled={index === c.shadows.length - 1}>›</button></div>}
                     </div>
-                  </TransformBox>
+                  </DraggableShadowBox>
                 ))}
-                {isGm && <button className="add-shadow-btn" onClick={addShadow} style={{ position: "absolute", bottom: "24px", right: "24px", zIndex: 20 }}>+ ADD SHADOW</button>}
+                
+                {/* Styled + ADD SHADOW Button in Bottom-Right */}
+                {isGm && (
+                  <button 
+                    type="button"
+                    onClick={addShadow} 
+                    style={{ 
+                      position: "absolute", 
+                      bottom: "24px", 
+                      right: "24px", 
+                      zIndex: 20,
+                      padding: "10px 18px",
+                      border: "3px solid var(--ink)",
+                      background: "var(--mint)",
+                      color: "var(--ink)",
+                      fontFamily: "Bebas Neue, sans-serif",
+                      fontSize: "16px",
+                      cursor: "pointer",
+                      boxShadow: "4px 4px 0 var(--ink)",
+                      transition: "transform 0.1s ease"
+                    }}
+                  >
+                    + ADD SHADOW
+                  </button>
+                )}
+                
                 {isGm && <label className="background-upload"><strong>SWAP BACKGROUND</strong><span>JPG, PNG, WEBP</span><input type="file" accept="image/*" onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.battle.background = url))} /></label>}
                 <div className="objective-tag"><span>OBJECTIVE</span><input disabled={!isGm} value={c.battle.objective} onChange={(event) => updateGm((next) => next.battle.objective = event.target.value)} /></div>
                 <div className="turn-tag"><span>ROUND</span><input disabled={!isGm} type="number" value={c.battle.round} onChange={(event) => updateGm((next) => next.battle.round = Number(event.target.value))} /></div>
@@ -439,7 +455,6 @@ function App() {
         <div className="party-label"><span>ACTIVE</span><strong>CREW</strong><i>{String(c.players.length).padStart(2, "0")} PCS</i>{isGm && <button onClick={handleAddNewPlayer}>+ ADD PC</button>}</div>
         <div className="party-members">{c.players.map((player, index) => <div className={`hero-card ${index % 2 ? "white" : "mint"}`} key={player.id}>
           
-          {/* Hero Name Header with Flex Layout & Protection */}
           <div className="hero-name" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <span>{String(index + 1).padStart(2, "0")}</span>
             <input
