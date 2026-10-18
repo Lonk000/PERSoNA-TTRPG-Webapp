@@ -319,6 +319,7 @@ export default function App() {
 
   const addShadow = () => {
     updateGm((next) => {
+      if (!next.shadows) next.shadows = [];
       const offset = (next.shadows.length % 3) * 300 + 30;
       const rowOffset = Math.floor(next.shadows.length / 3) * 40;
       next.shadows.push({ 
@@ -421,6 +422,7 @@ export default function App() {
   const c = campaign;
   if (!c.roam.points) c.roam.points = [];
   if (!c.map.pins) c.map.pins = [];
+  if (!c.shadows) c.shadows = [];
 
   return (
     <main className="app-shell">
@@ -542,7 +544,7 @@ export default function App() {
                       <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                         <span style={{ fontFamily: "Bebas Neue", fontSize: "14px", color: "#000" }}>TL</span>
                         <input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} style={{ width: "45px", textAlign: "center", border: "2px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold" }} />
-                        <input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} style={{ flex: 1, border: "2px solid var(--ink)", background: "#fff", color: "#000", padding: "2px 6px", fontWeight: "bold" }} />
+                        <input disabled={!isGm} value={shadow.status} placeholder="Ailment / Status" onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} style={{ flex: 1, border: "2px solid var(--ink)", background: "#fff", color: "#000", padding: "2px 6px", fontWeight: "bold" }} />
                       </div>
 
                     </div>
@@ -616,7 +618,7 @@ export default function App() {
                     onMouseLeave={() => setHoveredPinId(null)}
                   >
                     <div style={{ display: "flex", alignItems: "center", background: "#000", color: "#fff", border: "2px solid var(--mint)", padding: "4px 8px", gap: "6px", boxShadow: "3px 3px 0 var(--mint)", cursor: "pointer" }}>
-                      <img src={pin.iconUrl || PIN_ICONS[2].url} alt="" style={{ width: "20px", height: "20px", filter: "invert(1) brightness(2)" }} />
+                      <img src={pin.iconUrl || PIN_ICONS[2].url} alt="" style={{ width: "20px", height: "20px", filter: "invert(1) brightness(3)" }} />
                       <input 
                         disabled={!isGm}
                         value={pin.label} 
@@ -651,7 +653,7 @@ export default function App() {
                 {placingPin && (
                   <div style={{ position: "absolute", left: cursorPos.x, top: cursorPos.y, pointerEvents: "none", transform: "translate(-50%, -100%)", zIndex: 100 }}>
                     <div style={{ background: "#000", color: "#fff", padding: "6px 12px", border: "3px solid var(--mint)", display: "flex", alignItems: "center", gap: "8px", boxShadow: "4px 4px 0 var(--mint)" }}>
-                      <img src={selectedPinIconUrl} alt="" style={{ width: "20px", height: "20px", filter: "invert(1) brightness(2)" }} />
+                      <img src={selectedPinIconUrl} alt="" style={{ width: "20px", height: "20px", filter: "invert(1) brightness(3)" }} />
                       <strong style={{ fontFamily: "Bebas Neue, sans-serif", color: "var(--mint)" }}>CLICK TO PLACE</strong>
                     </div>
                   </div>
@@ -663,7 +665,7 @@ export default function App() {
                       <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "14px", color: "var(--mint)" }}>CHOOSE ICON:</span>
                       {PIN_ICONS.map((ic) => (
                         <button key={ic.url} title={ic.name} onClick={() => setSelectedPinIconUrl(ic.url)} style={{ background: selectedPinIconUrl === ic.url ? "var(--mint)" : "#333", border: "2px solid var(--mint)", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <img src={ic.url} alt={ic.name} style={{ width: "20px", height: "20px", filter: selectedPinIconUrl === ic.url ? "invert(0)" : "invert(1) brightness(2)" }} />
+                          <img src={ic.url} alt={ic.name} style={{ width: "20px", height: "20px", filter: "invert(1) brightness(3)" }} />
                         </button>
                       ))}
                     </div>
