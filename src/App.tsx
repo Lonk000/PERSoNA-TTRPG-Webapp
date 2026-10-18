@@ -364,7 +364,7 @@ function App() {
                       
                       {/* Name Header */}
                       <div className="enemy-name" style={{ display: "flex", alignItems: "center", background: "var(--paper)", border: "2px solid var(--ink)", padding: "6px 10px" }}>
-                        <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ width: "100%", background: "transparent", border: "none", fontWeight: "bold" }} />
+                        <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ width: "100%", background: "transparent", border: "none", fontWeight: "bold", color: "#000" }} />
                       </div>
 
                       {/* HP Bar Below Name */}
@@ -372,7 +372,7 @@ function App() {
                         <div style={{ flex: 1, background: "#ddd", height: "10px", border: "1px solid var(--ink)", position: "relative", overflow: "hidden" }}>
                           <i style={{ width: `${shadow.hp}%`, display: "block", height: "100%", background: "var(--mint)" }} />
                         </div>
-                        <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "14px" }}>{shadow.hp} HP</span>
+                        <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "14px", color: "#000" }}>{shadow.hp} HP</span>
                       </div>
 
                       {/* Natural Size Unconstrained Image Frame */}
@@ -389,11 +389,11 @@ function App() {
                       {/* GM Image Swap Button */}
                       {isGm && <label style={{ padding: "8px", fontSize: "13px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)", display: "block", marginTop: "8px", fontFamily: "Bebas Neue, sans-serif", boxShadow: "2px 2px 0 var(--ink)" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
                       
-                      {/* Fully Legible Status and Threat Level Bar */}
+                      {/* Fully Legible Status and Threat Level Bar with Pure Black Text */}
                       <div className="enemy-status" style={{ marginTop: "6px", background: "var(--paper)", border: "2px solid var(--ink)", padding: "6px 10px", display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "14px" }}>TL</span>
-                        <input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} style={{ width: "50px", background: "#fff", border: "1px solid var(--ink)", padding: "2px 4px" }} />
-                        <input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} style={{ flex: 1, background: "#fff", border: "1px solid var(--ink)", padding: "2px 6px" }} />
+                        <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "14px", color: "#000", fontWeight: "bold" }}>TL</span>
+                        <input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} style={{ width: "50px", background: "#fff", border: "1px solid var(--ink)", padding: "2px 4px", color: "#000", fontWeight: "bold" }} />
+                        <input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} style={{ flex: 1, background: "#fff", border: "1px solid var(--ink)", padding: "2px 6px", color: "#000", fontWeight: "bold" }} />
                       </div>
 
                       {isGm && <div className="shadow-controls" style={{ display: "flex", gap: "6px", marginTop: "6px" }}><button type="button" onClick={() => moveShadow(index, "left")} disabled={index === 0}>‹</button><button type="button" onClick={() => updateGm((next) => next.shadows.splice(index, 1))}>×</button><button type="button" onClick={() => moveShadow(index, "right")} disabled={index === c.shadows.length - 1}>›</button></div>}
