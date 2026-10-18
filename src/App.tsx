@@ -36,8 +36,8 @@ function Mark({ children }: { children: React.ReactNode }) {
   return <span className="mark">{children}</span>;
 }
 
-// Flexible draggable wrapper with zero restriction on natural upload size
-function DraggableShadowBox({ x = 40, y = 40, disabled, onUpdate, children }: { x?: number; y?: number; disabled: boolean; onUpdate: (pos: { x: number; y: number }) => void; children: ReactNode }) {
+// Draggable wrapper locked to 450px width
+function DraggableShadowBox({ x = 30, y = 30, disabled, onUpdate, children }: { x?: number; y?: number; disabled: boolean; onUpdate: (pos: { x: number; y: number }) => void; children: ReactNode }) {
   const [pos, setPos] = useState({ x, y });
 
   useEffect(() => {
@@ -77,7 +77,7 @@ function DraggableShadowBox({ x = 40, y = 40, disabled, onUpdate, children }: { 
         position: "absolute", 
         left: `${pos.x}px`, 
         top: `${pos.y}px`, 
-        minWidth: "280px",
+        width: "450px",
         cursor: disabled ? "default" : "move", 
         zIndex: 10,
         filter: "drop-shadow(6px 6px 0px var(--ink))"
@@ -203,14 +203,16 @@ function App() {
 
   const addShadow = () => {
     updateGm((next) => {
+      const offset = (next.shadows.length % 3) * 460 + 30;
+      const rowOffset = Math.floor(next.shadows.length / 3) * 60;
       next.shadows.push({ 
         id: crypto.randomUUID(), 
-        name: `Shadow ${next.shadows.length + 1}`, 
+        name: `SHADOW ${next.shadows.length + 1}`, 
         hp: 100, 
         threat: 1, 
         status: "Normal", 
-        x: 40 + next.shadows.length * 200, 
-        y: 60 
+        x: offset, 
+        y: 30 + rowOffset 
       });
     });
     addToast("SHADOW ADDED", "success");
@@ -359,44 +361,45 @@ function App() {
               {mode === "combat" && <div className={`dungeon-scene ${c.battle.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.battle.background ? { backgroundImage: `url(${c.battle.background})`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}>
                 {!c.battle.background && <><div className="ceiling-lines" /><div className="corridor-end"><span /><span /></div><div className="floor-grid" /></>}
                 {c.shadows.map((shadow, index) => (
-                  <DraggableShadowBox key={shadow.id} x={shadow.x ?? (40 + index * 260)} y={shadow.y ?? 50} disabled={!isGm} onUpdate={(p) => updateGm((next) => { next.shadows[index].x = p.x; next.shadows[index].y = p.y; })}>
-                    <div className="enemy-unit" style={{ width: "100%", display: "flex", flexDirection: "column", background: "transparent", border: "none", padding: "6px", boxSizing: "border-box" }}>
+                  <DraggableShadowBox key={shadow.id} x={shadow.x ?? (30 + (index % 3) * 460)} y={shadow.y ?? (30 + Math.floor(index / 3) * 60)} disabled={!isGm} onUpdate={(p) => updateGm((next) => { next.shadows[index].x = p.x; next.shadows[index].y = p.y; })}>
+                    <div className="enemy-unit" style={{ width: "100%", display: "flex", flexDirection: "column", background: "transparent", border: "none", boxSizing: "border-box" }}>
                       
-                      {/* Name Header */}
-                      <div className="enemy-name" style={{ display: "flex", alignItems: "center", background: "var(--paper)", border: "2px solid var(--ink)", padding: "6px 10px" }}>
-                        <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ width: "100%", background: "transparent", border: "none", fontWeight: "bold", color: "#000" }} />
+                      {/* Chunky Readable Name Header */}
+                      <div className="enemy-name" style={{ display: "flex", alignItems: "center", background: "var(--paper)", border: "3px solid var(--ink)", padding: "6px 12px" }}>
+                        <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ width: "100%", background: "transparent", border: "none", fontWeight: "900", color: "#000", fontSize: "18px", fontFamily: "Bebas Neue, sans-serif", letterSpacing: "0.5px" }} />
                       </div>
 
-                      {/* HP Bar Below Name */}
-                      <div className="enemy-hp" style={{ background: "var(--paper)", border: "2px solid var(--ink)", borderTop: "none", padding: "4px 10px", display: "flex", alignItems: "center", gap: "8px" }}>
-                        <div style={{ flex: 1, background: "#ddd", height: "10px", border: "1px solid var(--ink)", position: "relative", overflow: "hidden" }}>
+                      {/* Chunky HP Bar Directly Below Name */}
+                      <div className="enemy-hp" style={{ background: "var(--paper)", border: "3px solid var(--ink)", borderTop: "none", padding: "8px 12px", display: "flex", alignItems: "center", gap: "10px" }}>
+                        <div style={{ flex: 1, background: "#ccc", height: "18px", border: "2px solid var(--ink)", position: "relative", overflow: "hidden" }}>
                           <i style={{ width: `${shadow.hp}%`, display: "block", height: "100%", background: "var(--mint)" }} />
                         </div>
-                        <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "14px", color: "#000" }}>{shadow.hp} HP</span>
+                        <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "18px", color: "#000", fontWeight: "bold" }}>{shadow.hp} HP</span>
                       </div>
 
-                      {/* Natural Size Unconstrained Image Frame */}
-                      <div className={`shadow-figure ${shadow.sprite ? "has-sprite" : ""}`} style={{ width: "100%", minHeight: "180px", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", marginTop: "8px" }}>
+                      {/* Large 450px Max Height Frame for Uploaded Sprites */}
+                      <div className={`shadow-figure ${shadow.sprite ? "has-sprite" : ""}`} style={{ width: "100%", minHeight: "260px", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", margin: "12px 0" }}>
                         {shadow.sprite ? (
-                          <img src={shadow.sprite} alt="" style={{ width: "100%", height: "auto", maxHeight: "400px", objectFit: "contain", display: "block" }} />
+                          <img src={shadow.sprite} alt="" style={{ width: "100%", height: "auto", maxHeight: "380px", objectFit: "contain", display: "block" }} />
                         ) : (
-                          <div style={{ width: "160px", height: "200px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <div style={{ width: "200px", height: "260px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                             <i className="horn left" /><i className="horn right" /><span className="shadow-head"><b /><b /></span><span className="shadow-body" /><i className="shadow-arm left" /><i className="shadow-arm right" /><i className="shadow-leg left" /><i className="shadow-leg right" />
                           </div>
                         )}
                       </div>
 
-                      {/* GM Image Swap Button */}
-                      {isGm && <label style={{ padding: "8px", fontSize: "13px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)", display: "block", marginTop: "8px", fontFamily: "Bebas Neue, sans-serif", boxShadow: "2px 2px 0 var(--ink)" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
+                      {/* Large Readable Change Image Button */}
+                      {isGm && <label style={{ padding: "10px 14px", fontSize: "16px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "3px solid var(--ink)", display: "block", fontFamily: "Bebas Neue, sans-serif", boxShadow: "4px 4px 0 var(--ink)", fontWeight: "bold" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
                       
-                      {/* Fully Legible Status and Threat Level Bar with Pure Black Text */}
-                      <div className="enemy-status" style={{ marginTop: "6px", background: "var(--paper)", border: "2px solid var(--ink)", padding: "6px 10px", display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "14px", color: "#000", fontWeight: "bold" }}>TL</span>
-                        <input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} style={{ width: "50px", background: "#fff", border: "1px solid var(--ink)", padding: "2px 4px", color: "#000", fontWeight: "bold" }} />
-                        <input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} style={{ flex: 1, background: "#fff", border: "1px solid var(--ink)", padding: "2px 6px", color: "#000", fontWeight: "bold" }} />
+                      {/* Readable TL & Status Bar */}
+                      <div className="enemy-status" style={{ marginTop: "10px", background: "var(--paper)", border: "3px solid var(--ink)", padding: "8px 12px", display: "flex", alignItems: "center", gap: "10px", boxShadow: "4px 4px 0 var(--ink)" }}>
+                        <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "18px", color: "#000", fontWeight: "bold" }}>TL</span>
+                        <input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} style={{ width: "60px", height: "34px", background: "#fff", border: "2px solid var(--ink)", padding: "2px 6px", color: "#000", fontWeight: "bold", fontSize: "16px", textAlign: "center" }} />
+                        <input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} style={{ flex: 1, height: "34px", background: "#fff", border: "2px solid var(--ink)", padding: "2px 8px", color: "#000", fontWeight: "bold", fontSize: "15px" }} />
                       </div>
 
-                      {isGm && <div className="shadow-controls" style={{ display: "flex", gap: "6px", marginTop: "6px" }}><button type="button" onClick={() => moveShadow(index, "left")} disabled={index === 0}>‹</button><button type="button" onClick={() => updateGm((next) => next.shadows.splice(index, 1))}>×</button><button type="button" onClick={() => moveShadow(index, "right")} disabled={index === c.shadows.length - 1}>›</button></div>}
+                      {/* Reorder / Delete Controls */}
+                      {isGm && <div className="shadow-controls" style={{ display: "flex", gap: "8px", marginTop: "8px" }}><button type="button" onClick={() => moveShadow(index, "left")} disabled={index === 0} style={{ padding: "6px 14px", border: "2px solid var(--ink)", background: "var(--paper)", fontWeight: "bold", fontSize: "16px" }}>‹</button><button type="button" onClick={() => updateGm((next) => next.shadows.splice(index, 1))} style={{ padding: "6px 14px", border: "2px solid var(--ink)", background: "var(--paper)", fontWeight: "bold", fontSize: "16px" }}>×</button><button type="button" onClick={() => moveShadow(index, "right")} disabled={index === c.shadows.length - 1} style={{ padding: "6px 14px", border: "2px solid var(--ink)", background: "var(--paper)", fontWeight: "bold", fontSize: "16px" }}>›</button></div>}
                     </div>
                   </DraggableShadowBox>
                 ))}
