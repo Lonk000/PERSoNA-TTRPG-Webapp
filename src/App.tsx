@@ -36,7 +36,7 @@ function Mark({ children }: { children: React.ReactNode }) {
   return <span className="mark">{children}</span>;
 }
 
-// Draggable wrapper locked to 450px width
+// Draggable container with strict flow layout
 function DraggableShadowBox({ x = 30, y = 30, disabled, onUpdate, children }: { x?: number; y?: number; disabled: boolean; onUpdate: (pos: { x: number; y: number }) => void; children: ReactNode }) {
   const [pos, setPos] = useState({ x, y });
 
@@ -77,7 +77,7 @@ function DraggableShadowBox({ x = 30, y = 30, disabled, onUpdate, children }: { 
         position: "absolute", 
         left: `${pos.x}px`, 
         top: `${pos.y}px`, 
-        width: "450px",
+        width: "320px",
         cursor: disabled ? "default" : "move", 
         zIndex: 10,
         filter: "drop-shadow(6px 6px 0px var(--ink))"
@@ -203,8 +203,8 @@ function App() {
 
   const addShadow = () => {
     updateGm((next) => {
-      const offset = (next.shadows.length % 3) * 460 + 30;
-      const rowOffset = Math.floor(next.shadows.length / 3) * 60;
+      const offset = (next.shadows.length % 4) * 340 + 30;
+      const rowOffset = Math.floor(next.shadows.length / 4) * 40;
       next.shadows.push({ 
         id: crypto.randomUUID(), 
         name: `SHADOW ${next.shadows.length + 1}`, 
@@ -361,45 +361,45 @@ function App() {
               {mode === "combat" && <div className={`dungeon-scene ${c.battle.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.battle.background ? { backgroundImage: `url(${c.battle.background})`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}>
                 {!c.battle.background && <><div className="ceiling-lines" /><div className="corridor-end"><span /><span /></div><div className="floor-grid" /></>}
                 {c.shadows.map((shadow, index) => (
-                  <DraggableShadowBox key={shadow.id} x={shadow.x ?? (30 + (index % 3) * 460)} y={shadow.y ?? (30 + Math.floor(index / 3) * 60)} disabled={!isGm} onUpdate={(p) => updateGm((next) => { next.shadows[index].x = p.x; next.shadows[index].y = p.y; })}>
-                    <div className="enemy-unit" style={{ width: "100%", display: "flex", flexDirection: "column", background: "transparent", border: "none", boxSizing: "border-box" }}>
+                  <DraggableShadowBox key={shadow.id} x={shadow.x ?? (30 + (index % 4) * 340)} y={shadow.y ?? (30 + Math.floor(index / 4) * 40)} disabled={!isGm} onUpdate={(p) => updateGm((next) => { next.shadows[index].x = p.x; next.shadows[index].y = p.y; })}>
+                    <div className="enemy-unit" style={{ width: "100%", display: "flex", flexDirection: "column", gap: "0px", background: "transparent" }}>
                       
-                      {/* Chunky Readable Name Header */}
-                      <div className="enemy-name" style={{ display: "flex", alignItems: "center", background: "var(--paper)", border: "3px solid var(--ink)", padding: "6px 12px" }}>
-                        <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ width: "100%", background: "transparent", border: "none", fontWeight: "900", color: "#000", fontSize: "18px", fontFamily: "Bebas Neue, sans-serif", letterSpacing: "0.5px" }} />
+                      {/* 1. TOP HEADER: Name */}
+                      <div className="enemy-name" style={{ display: "flex", alignItems: "center", background: "var(--paper)", border: "3px solid var(--ink)", padding: "4px 8px" }}>
+                        <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ width: "100%", background: "transparent", border: "none", fontWeight: "900", color: "#000", fontSize: "16px", fontFamily: "Bebas Neue, sans-serif" }} />
                       </div>
 
-                      {/* Chunky HP Bar Directly Below Name */}
-                      <div className="enemy-hp" style={{ background: "var(--paper)", border: "3px solid var(--ink)", borderTop: "none", padding: "8px 12px", display: "flex", alignItems: "center", gap: "10px" }}>
-                        <div style={{ flex: 1, background: "#ccc", height: "18px", border: "2px solid var(--ink)", position: "relative", overflow: "hidden" }}>
+                      {/* 2. HP BAR: Below Name */}
+                      <div className="enemy-hp" style={{ background: "var(--paper)", border: "3px solid var(--ink)", borderTop: "none", padding: "6px 8px", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <div style={{ flex: 1, background: "#ccc", height: "14px", border: "2px solid var(--ink)", position: "relative", overflow: "hidden" }}>
                           <i style={{ width: `${shadow.hp}%`, display: "block", height: "100%", background: "var(--mint)" }} />
                         </div>
-                        <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "18px", color: "#000", fontWeight: "bold" }}>{shadow.hp} HP</span>
+                        <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "15px", color: "#000", fontWeight: "bold" }}>{shadow.hp} HP</span>
                       </div>
 
-                      {/* Large 450px Max Height Frame for Uploaded Sprites */}
-                      <div className={`shadow-figure ${shadow.sprite ? "has-sprite" : ""}`} style={{ width: "100%", minHeight: "260px", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", margin: "12px 0" }}>
+                      {/* 3. SPRITE IMAGE: Uncovered in the middle */}
+                      <div className={`shadow-figure ${shadow.sprite ? "has-sprite" : ""}`} style={{ width: "100%", height: "240px", display: "flex", alignItems: "center", justifyContent: "center", margin: "8px 0" }}>
                         {shadow.sprite ? (
-                          <img src={shadow.sprite} alt="" style={{ width: "100%", height: "auto", maxHeight: "380px", objectFit: "contain", display: "block" }} />
+                          <img src={shadow.sprite} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
                         ) : (
-                          <div style={{ width: "200px", height: "260px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <div style={{ width: "160px", height: "200px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                             <i className="horn left" /><i className="horn right" /><span className="shadow-head"><b /><b /></span><span className="shadow-body" /><i className="shadow-arm left" /><i className="shadow-arm right" /><i className="shadow-leg left" /><i className="shadow-leg right" />
                           </div>
                         )}
                       </div>
 
-                      {/* Large Readable Change Image Button */}
-                      {isGm && <label style={{ padding: "10px 14px", fontSize: "16px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "3px solid var(--ink)", display: "block", fontFamily: "Bebas Neue, sans-serif", boxShadow: "4px 4px 0 var(--ink)", fontWeight: "bold" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
+                      {/* 4. CHANGE IMAGE BUTTON */}
+                      {isGm && <label style={{ padding: "6px 10px", fontSize: "13px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "3px solid var(--ink)", display: "block", fontFamily: "Bebas Neue, sans-serif", boxShadow: "3px 3px 0 var(--ink)", fontWeight: "bold" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
                       
-                      {/* Readable TL & Status Bar */}
-                      <div className="enemy-status" style={{ marginTop: "10px", background: "var(--paper)", border: "3px solid var(--ink)", padding: "8px 12px", display: "flex", alignItems: "center", gap: "10px", boxShadow: "4px 4px 0 var(--ink)" }}>
-                        <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "18px", color: "#000", fontWeight: "bold" }}>TL</span>
-                        <input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} style={{ width: "60px", height: "34px", background: "#fff", border: "2px solid var(--ink)", padding: "2px 6px", color: "#000", fontWeight: "bold", fontSize: "16px", textAlign: "center" }} />
-                        <input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} style={{ flex: 1, height: "34px", background: "#fff", border: "2px solid var(--ink)", padding: "2px 8px", color: "#000", fontWeight: "bold", fontSize: "15px" }} />
+                      {/* 5. THREAT LEVEL & STATUS BAR: Below Image */}
+                      <div className="enemy-status" style={{ marginTop: "6px", background: "var(--paper)", border: "3px solid var(--ink)", padding: "6px 8px", display: "flex", alignItems: "center", gap: "6px", boxShadow: "3px 3px 0 var(--ink)" }}>
+                        <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "15px", color: "#000", fontWeight: "bold" }}>TL</span>
+                        <input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} style={{ width: "42px", height: "26px", background: "#fff", border: "2px solid var(--ink)", padding: "2px 4px", color: "#000", fontWeight: "bold", fontSize: "14px", textAlign: "center" }} />
+                        <input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} style={{ flex: 1, height: "26px", background: "#fff", border: "2px solid var(--ink)", padding: "2px 6px", color: "#000", fontWeight: "bold", fontSize: "13px" }} />
                       </div>
 
-                      {/* Reorder / Delete Controls */}
-                      {isGm && <div className="shadow-controls" style={{ display: "flex", gap: "8px", marginTop: "8px" }}><button type="button" onClick={() => moveShadow(index, "left")} disabled={index === 0} style={{ padding: "6px 14px", border: "2px solid var(--ink)", background: "var(--paper)", fontWeight: "bold", fontSize: "16px" }}>‹</button><button type="button" onClick={() => updateGm((next) => next.shadows.splice(index, 1))} style={{ padding: "6px 14px", border: "2px solid var(--ink)", background: "var(--paper)", fontWeight: "bold", fontSize: "16px" }}>×</button><button type="button" onClick={() => moveShadow(index, "right")} disabled={index === c.shadows.length - 1} style={{ padding: "6px 14px", border: "2px solid var(--ink)", background: "var(--paper)", fontWeight: "bold", fontSize: "16px" }}>›</button></div>}
+                      {/* 6. CONTROL BUTTONS */}
+                      {isGm && <div className="shadow-controls" style={{ display: "flex", gap: "6px", marginTop: "6px" }}><button type="button" onClick={() => moveShadow(index, "left")} disabled={index === 0} style={{ padding: "4px 10px", border: "2px solid var(--ink)", background: "var(--paper)", fontWeight: "bold" }}>‹</button><button type="button" onClick={() => updateGm((next) => next.shadows.splice(index, 1))} style={{ padding: "4px 10px", border: "2px solid var(--ink)", background: "var(--paper)", fontWeight: "bold" }}>×</button><button type="button" onClick={() => moveShadow(index, "right")} disabled={index === c.shadows.length - 1} style={{ padding: "4px 10px", border: "2px solid var(--ink)", background: "var(--paper)", fontWeight: "bold" }}>›</button></div>}
                     </div>
                   </DraggableShadowBox>
                 ))}
@@ -471,11 +471,13 @@ function App() {
         </aside>
       </div>
 
+      {/* FOOTER PARTY BAR WITH PROPERLY POSITIONED REMOVE BUTTON */}
       <footer className="party-bar">
         <div className="party-label"><span>ACTIVE</span><strong>CREW</strong><i>{String(c.players.length).padStart(2, "0")} PCS</i>{isGm && <button onClick={handleAddNewPlayer}>+ ADD PC</button>}</div>
-        <div className="party-members">{c.players.map((player, index) => <div className={`hero-card ${index % 2 ? "white" : "mint"}`} key={player.id}>
+        <div className="party-members">{c.players.map((player, index) => <div className={`hero-card ${index % 2 ? "white" : "mint"}`} key={player.id} style={{ position: "relative", padding: "12px" }}>
           
-          <div className="hero-name" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          {/* Top Row: Hero Name + Role Input */}
+          <div className="hero-name" style={{ display: "flex", alignItems: "center", gap: "6px", paddingRight: isGm ? "70px" : "0" }}>
             <span>{String(index + 1).padStart(2, "0")}</span>
             <input
               disabled={!isGm}
@@ -483,7 +485,7 @@ function App() {
               onChange={(event) => updatePlayerLocal(player.id, { name: event.target.value })}
               onBlur={(event) => persistPlayer(player.id, { name: event.target.value })}
               placeholder="PC Name"
-              style={{ flex: 1, minWidth: 0 }}
+              style={{ flex: 1, minWidth: 0, fontWeight: "bold" }}
             />
             <input
               disabled={!isGm}
@@ -491,23 +493,45 @@ function App() {
               onChange={(event) => updatePlayerLocal(player.id, { role: event.target.value })}
               onBlur={(event) => persistPlayer(player.id, { role: event.target.value })}
               placeholder="Role"
-              style={{ width: "70px" }}
+              style={{ width: "65px" }}
             />
           </div>
+
+          {/* Clean Top-Right Remove Button */}
+          {isGm && (
+            <button 
+              className="remove-player" 
+              onClick={async () => {
+                try {
+                  const res = await removePlayer(player.id);
+                  if (res && res.campaign) setCampaign(res.campaign);
+                } catch {
+                  updateGm((next) => { next.players = next.players.filter((p) => p.id !== player.id); });
+                }
+              }}
+              style={{
+                position: "absolute",
+                top: "6px",
+                right: "6px",
+                background: "var(--ink)",
+                color: "var(--paper)",
+                border: "none",
+                fontSize: "10px",
+                padding: "3px 6px",
+                cursor: "pointer",
+                fontFamily: "Bebas Neue, sans-serif",
+                zIndex: 10
+              }}
+            >
+              REMOVE
+            </button>
+          )}
 
           <div className="art-pair">
             <label className={`portrait ${player.art ? "has-art" : ""}`}>{player.art ? <img src={player.art} alt="" /> : <span>{player.initial}</span>}<small>CHARACTER</small><input type="file" accept="image/*" onChange={(event) => upload(event, "player", async (url) => persistPlayer(player.id, { art: url }))} /></label>
             <label className={`portrait persona-art ${player.personaArt ? "has-art" : ""}`}>{player.personaArt ? <img src={player.personaArt} alt="" /> : <span>P</span>}<small>PERSONA</small><input type="file" accept="image/*" onChange={(event) => upload(event, "player", async (url) => persistPlayer(player.id, { personaArt: url }))} /></label>
           </div>
           <div className="meters">{(["hp", "sp"] as const).map((resource) => <label className={`number-resource ${resource}`} key={resource}><span>{resource.toUpperCase()}</span><input type="number" min="0" value={player[resource]} onChange={(event) => updatePlayerLocal(player.id, { [resource]: Number(event.target.value) })} onBlur={(event) => persistPlayer(player.id, { [resource]: Number(event.target.value) })} /></label>)}</div>
-          {isGm && <button className="remove-player" onClick={async () => {
-            try {
-              const res = await removePlayer(player.id);
-              if (res && res.campaign) setCampaign(res.campaign);
-            } catch {
-              updateGm((next) => { next.players = next.players.filter((p) => p.id !== player.id); });
-            }
-          }}>REMOVE</button>}
         </div>)}</div>
         <div className="phase"><span>ACCESS</span><strong>{role.toUpperCase()}</strong><small>GLOBAL</small></div>
       </footer>
