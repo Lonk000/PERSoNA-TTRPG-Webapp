@@ -1,35 +1,36 @@
-import { createClient } from "@supabase/supabase-js";
-import { projectId, publicAnonKey } from "../utils/supabase/info";
-
-export const supabase = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
-const base = `https://${projectId}.supabase.co/functions/v1/make-server-d290f444`;
+// Route API requests directly to Netlify Functions (/api mapped via netlify.toml)
+const API_BASE = "/api";
 
 async function request(path: string, options: RequestInit = {}) {
-  const { data } = await supabase.auth.getSession();
-  const response = await fetch(`${base}${path}`, {
+  const response = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
-      ...(data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {}),
       ...options.headers,
     },
   });
+
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.error || "Request failed.");
   return payload;
 }
 
+// Simple local/custom auth helpers (if your Netlify function handles signup/signin)
 export async function signUp(email: string, password: string) {
-  await request("/signup", { method: "POST", body: JSON.stringify({ email, password }) });
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
+  return request("/signup", { 
+    method: "POST", 
+    body: JSON.stringify({ email, password }) 
+  });
 }
 
 export async function signIn(email: string, password: string) {
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
+  return request("/signin", { 
+    method: "POST", 
+    body: JSON.stringify({ email, password }) 
+  });
 }
 
+// Campaign & Player endpoints
 export const getCampaign = () => request("/campaign");
 export const saveCampaign = (campaign: unknown) => request("/campaign", { method: "PUT", body: JSON.stringify(campaign) });
 export const patchPlayer = (id: string, patch: unknown) => request(`/players/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
