@@ -21,9 +21,6 @@ export default async (req: Request, context: Context) => {
       body = await req.json().catch(() => null);
     }
 
-    // --- YOUR BACKEND LOGIC GOES HERE ---
-    // (Migrated over from your previous Supabase Edge Function logic)
-
     return Response.json(
       { 
         message: "Successfully connected to Netlify serverless backend!",
