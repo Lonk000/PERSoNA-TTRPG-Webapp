@@ -129,26 +129,6 @@ body { margin: 0; min-width: 320px; background: #0b0b0e; }
 .enemy-hp { position: relative; height: 8px; margin-top: 3px; overflow: hidden; background: var(--ink); }
 .enemy-hp i { position: absolute; inset: 0 auto 0 0; background: var(--mint); }
 .enemy-hp span { position: absolute; inset: 0 3px 0 auto; color: var(--paper); font-family: "Space Grotesk"; font-size: 6px; font-weight: 800; line-height: 8px; }
-.shadow-figure { position: relative; width: 118px; flex: 1; filter: drop-shadow(8px 10px 0 rgba(0,0,0,.45)); cursor: pointer; }
-.shadow-figure > input { display: none; }
-.shadow-figure > small { position: absolute; z-index: 6; left: 8px; right: 8px; bottom: 11px; padding: 3px; color: var(--ink); background: var(--mint); box-shadow: 3px 3px 0 var(--ink); text-align: center; font-size: 6px; font-weight: 800; letter-spacing: .08em; opacity: 0; transition: opacity .15s ease; }
-.shadow-figure:hover > small, .shadow-figure:focus-within > small { opacity: 1; }
-.shadow-figure > img { position: absolute; z-index: 5; inset: 4px 0 13px; width: 100%; height: calc(100% - 17px); object-fit: contain; object-position: center bottom; }
-.shadow-head { position: absolute; z-index: 2; top: 18px; left: 35px; width: 50px; height: 48px; background: var(--paper); border: 5px solid var(--ink); border-radius: 45% 45% 52% 52%; }
-.shadow-head b { position: absolute; top: 17px; width: 11px; height: 5px; background: var(--red); transform: rotate(13deg); box-shadow: 0 0 7px var(--red); }
-.shadow-head b:first-child { left: 7px; }
-.shadow-head b:last-child { right: 7px; transform: rotate(-13deg); }
-.horn { position: absolute; z-index: 3; top: 4px; width: 27px; height: 38px; background: var(--yellow); border: 5px solid var(--ink); clip-path: polygon(0 100%, 100% 100%, 55% 0); }
-.horn.left { left: 25px; transform: rotate(-24deg); }
-.horn.right { right: 23px; transform: rotate(24deg); }
-.shadow-body { position: absolute; top: 61px; left: 24px; width: 72px; height: 91px; background: linear-gradient(135deg, #434552 0 48%, #17181f 49%); border: 5px solid var(--ink); clip-path: polygon(15% 0, 85% 0, 100% 34%, 79% 100%, 21% 100%, 0 34%); }
-.shadow-arm, .shadow-leg { position: absolute; z-index: -1; width: 25px; background: #343641; border: 5px solid var(--ink); transform-origin: top; }
-.shadow-arm { top: 72px; height: 86px; }
-.shadow-arm.left { left: 20px; transform: rotate(28deg); }
-.shadow-arm.right { right: 18px; transform: rotate(-28deg); }
-.shadow-leg { top: 136px; height: 62px; }
-.shadow-leg.left { left: 39px; transform: rotate(9deg); }
-.shadow-leg.right { right: 37px; transform: rotate(-9deg); }
 .enemy-status { position: absolute; z-index: 7; bottom: 8px; display: flex; align-items: center; gap: 3px; padding: 3px 5px; background: var(--ink); color: var(--paper); border: 2px solid var(--paper); font-size: 8px; font-weight: 800; letter-spacing: .1em; transform: rotate(2deg); }
 .enemy-status > span { color: var(--mint); }
 .enemy-status input { min-width: 0; padding: 0; border: 0; outline: 0; color: var(--paper); background: transparent; font: inherit; letter-spacing: .06em; }
