@@ -584,7 +584,7 @@ export default function App() {
               </div>}
 
               {/* MAP MODE */}
-              {mode === "map" && <div className={`world-map ${c.map.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.map.background ? { backgroundImage: `url(${c.map.background})`, backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" } : {}) }}>
+              {mode === "map" && <div className={`world-map ${c.map.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.map.background ? { backgroundImage: `url(${c.map.background})`, backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center" } : {}) }}>
                 {!c.map.background && <><div className="map-water" /><div className="district north"><span>NORTH WARD</span></div><div className="district central"><span>CENTRAL</span></div><div className="district docks"><span>DOCKS</span></div><div className="district old-town"><span>OLD TOWN</span></div></>}
                 
                 {c.map.pins.map((pin, index) => (
