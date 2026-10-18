@@ -1,4 +1,4 @@
-// Route API requests directly to Netlify Functions (/api mapped via netlify.toml)
+
 const API_BASE = "/api";
 
 async function request(path: string, options: RequestInit = {}) {
@@ -15,7 +15,7 @@ async function request(path: string, options: RequestInit = {}) {
   return payload;
 }
 
-// Simple local/custom auth helpers (if your Netlify function handles signup/signin)
+// Simple local/custom auth helpers
 export async function signUp(email: string, password: string) {
   return request("/signup", { 
     method: "POST", 
