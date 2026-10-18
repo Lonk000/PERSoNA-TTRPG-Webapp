@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from "react";
-import { addPlayer, getCampaign, patchPlayer, removePlayer, saveCampaign, signIn, signUp, supabase, uploadImage } from "./api";
+import { addPlayer, getCampaign, patchPlayer, removePlayer, saveCampaign, signIn, signUp, uploadImage } from "./api";
 
 type Mode = "combat" | "roam" | "map";
 type Role = "gm" | "player";
@@ -91,9 +91,8 @@ function App() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => data.session ? load() : setAuthenticated(false));
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => session ? load() : setAuthenticated(false));
-    return () => data.subscription.unsubscribe();
+    // Check initial authentication via your backend API
+    load();
   }, [load]);
 
   useEffect(() => {
@@ -152,6 +151,11 @@ function App() {
     }
   };
 
+  const handleSignOut = () => {
+    // Clear local auth state; clear tokens/cookies handled by your backend signout endpoint if applicable
+    setAuthenticated(false);
+  };
+
   if (authenticated === null) return <main className="loading-screen">LOADING CAMPAIGN…</main>;
   if (!authenticated) return <Login onReady={load} />;
   if (!campaign) return <main className="loading-screen">SYNCING SHARED STATE…</main>;
@@ -181,7 +185,7 @@ function App() {
           <div className="week-strip">{weekdays.map((day, index) => <button disabled={!isGm} className={`day ${c.calendar.selectedDay === index ? "active" : ""}`} onClick={() => updateGm((next) => next.calendar.selectedDay = index)} key={day}><span>{day}</span><strong>{c.calendar.weekStart + index}</strong></button>)}</div>
           <button className="week-arrow" disabled={!isGm} onClick={() => updateGm((next) => next.calendar.weekStart = Math.min(25, next.calendar.weekStart + 7))}>›</button>
         </div>
-        <div className="session-chip"><span>{role.toUpperCase()}</span><strong>{notice || "LIVE"}</strong><button onClick={() => supabase.auth.signOut()}>SIGN OUT</button></div>
+        <div className="session-chip"><span>{role.toUpperCase()}</span><strong>{notice || "LIVE"}</strong><button onClick={handleSignOut}>SIGN OUT</button></div>
       </header>
 
       <div className="content">
@@ -244,7 +248,7 @@ function App() {
             <label className={`portrait ${player.art ? "has-art" : ""}`}>{player.art ? <img src={player.art} alt="" /> : <span>{player.initial}</span>}<small>CHARACTER</small><input type="file" accept="image/*" onChange={(event) => upload(event, "player", async (url) => setCampaign((await patchPlayer(player.id, { art: url })).campaign))} /></label>
             <label className={`portrait persona-art ${player.personaArt ? "has-art" : ""}`}>{player.personaArt ? <img src={player.personaArt} alt="" /> : <span>P</span>}<small>PERSONA</small><input type="file" accept="image/*" onChange={(event) => upload(event, "player", async (url) => setCampaign((await patchPlayer(player.id, { personaArt: url })).campaign))} /></label>
           </div>
-          <div className="meters">{(["hp", "sp"] as const).map((resource) => <label className={`number-resource ${resource}`} key={resource}><span>{resource.toUpperCase()}</span><input type="number" min="0" value={player[resource]} onChange={(event) => updatePlayerLocal(player.id, { [resource]: Number(event.target.value) })} onBlur={(event) => persistPlayer(player.id, { [resource]: Number(event.target.value) })} /></label>)}</div>
+          <div className="meters">{(["hp", "sp"] as const).map((resource) => <label className={`number-resource ${resource}`} key={resource}><span>{resource.toUpperCase()}</span><input type="number" min="0" value={player[resource]} onChange={(event) => updatePlayerLocal(player.id, { [resource]: Number(event.target.value) })} onBlur={(event) => persistPlayer(player.id, { [resource]: Number(event.target.value) }))} /></label>)}</div>
           {isGm && <button className="remove-player" onClick={async () => setCampaign((await removePlayer(player.id)).campaign)}>REMOVE</button>}
         </div>)}</div>
         <div className="phase"><span>ACCESS</span><strong>{role.toUpperCase()}</strong><small>GLOBAL</small></div>
