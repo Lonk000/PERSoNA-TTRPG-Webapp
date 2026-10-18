@@ -174,7 +174,7 @@ function DraggableShadowBox({ x = 20, y = 20, disabled, onUpdate, children }: { 
         position: "absolute", 
         left: `${pos.x}px`, 
         top: `${pos.y}px`, 
-        width: "270px",
+        width: "420px",
         cursor: disabled ? "default" : "move", 
         zIndex: 10,
         filter: "drop-shadow(6px 6px 0px var(--ink))"
@@ -320,8 +320,8 @@ export default function App() {
   const addShadow = () => {
     updateGm((next) => {
       if (!next.shadows) next.shadows = [];
-      const offset = (next.shadows.length % 3) * 290 + 20;
-      const rowOffset = Math.floor(next.shadows.length / 3) * 30;
+      const offset = (next.shadows.length % 2) * 440 + 20;
+      const rowOffset = Math.floor(next.shadows.length / 2) * 20;
       next.shadows.push({ 
         id: crypto.randomUUID(), 
         name: `SHADOW ${next.shadows.length + 1}`, 
@@ -507,55 +507,55 @@ export default function App() {
                 {c.shadows.map((shadow, index) => (
                   <DraggableShadowBox 
                     key={shadow.id} 
-                    x={Math.min(window.innerWidth - 300, Math.max(10, shadow.x ?? (20 + (index % 3) * 280)))} 
-                    y={Math.min(380, Math.max(10, shadow.y ?? (20 + Math.floor(index / 3) * 20)))} 
+                    x={Math.min(window.innerWidth - 440, Math.max(10, shadow.x ?? (20 + (index % 2) * 440)))} 
+                    y={Math.min(380, Math.max(10, shadow.y ?? (20 + Math.floor(index / 2) * 20)))} 
                     disabled={!isGm} 
                     onUpdate={(p) => updateGm((next) => { next.shadows[index].x = p.x; next.shadows[index].y = p.y; })}
                   >
-                    <div style={{ width: "100%", background: "var(--paper)", border: "3px solid var(--ink)", padding: "8px", boxShadow: "4px 4px 0 var(--ink)", display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <div style={{ width: "100%", background: "var(--paper)", border: "3px solid var(--ink)", padding: "12px", boxShadow: "4px 4px 0 var(--ink)", display: "flex", flexDirection: "column", gap: "10px", boxSizing: "border-box" }}>
                       
                       {isGm && (
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid var(--ink)", paddingBottom: "2px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid var(--ink)", paddingBottom: "4px" }}>
                           <div style={{ display: "flex", gap: "4px" }}>
-                            <button type="button" onClick={() => moveShadow(index, "left")} disabled={index === 0} style={{ padding: "2px 6px", background: "var(--ink)", color: "#fff", border: "0", fontFamily: "Bebas Neue", cursor: "pointer" }}>‹</button>
-                            <button type="button" onClick={() => moveShadow(index, "right")} disabled={index === c.shadows.length - 1} style={{ padding: "2px 6px", background: "var(--ink)", color: "#fff", border: "0", fontFamily: "Bebas Neue", cursor: "pointer" }}>›</button>
+                            <button type="button" onClick={() => moveShadow(index, "left")} disabled={index === 0} style={{ padding: "2px 8px", background: "var(--ink)", color: "#fff", border: "0", fontFamily: "Bebas Neue", cursor: "pointer" }}>‹</button>
+                            <button type="button" onClick={() => moveShadow(index, "right")} disabled={index === c.shadows.length - 1} style={{ padding: "2px 8px", background: "var(--ink)", color: "#fff", border: "0", fontFamily: "Bebas Neue", cursor: "pointer" }}>›</button>
                           </div>
-                          <button type="button" onClick={() => updateGm((next) => next.shadows.splice(index, 1))} style={{ padding: "2px 6px", background: "#ff4d4d", color: "#fff", border: "0", fontFamily: "Bebas Neue", cursor: "pointer" }}>REMOVE</button>
+                          <button type="button" onClick={() => updateGm((next) => next.shadows.splice(index, 1))} style={{ padding: "2px 8px", background: "#ff4d4d", color: "#fff", border: "0", fontFamily: "Bebas Neue", cursor: "pointer" }}>REMOVE</button>
                         </div>
                       )}
 
                       <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                        <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ flex: 1, background: "#fff", border: "2px solid var(--ink)", padding: "2px 6px", fontWeight: "900", fontFamily: "Bebas Neue", fontSize: "16px", color: "#000" }} />
+                        <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ flex: 1, background: "#fff", border: "2px solid var(--ink)", padding: "6px 10px", fontWeight: "900", fontFamily: "Bebas Neue", fontSize: "18px", color: "#000" }} />
                       </div>
 
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#eee", border: "2px solid var(--ink)", padding: "3px 6px" }}>
-                        <span style={{ fontFamily: "Bebas Neue", fontSize: "13px", fontWeight: "bold", color: "#000" }}>HP:</span>
-                        <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                          <input disabled={!isGm} type="number" value={shadow.hp} onChange={(e) => updateGm((next) => next.shadows[index].hp = Number(e.target.value))} style={{ width: "45px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold" }} />
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#eee", border: "2px solid var(--ink)", padding: "6px 10px" }}>
+                        <span style={{ fontFamily: "Bebas Neue", fontSize: "15px", fontWeight: "bold", color: "#000" }}>HP:</span>
+                        <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                          <input disabled={!isGm} type="number" value={shadow.hp} onChange={(e) => updateGm((next) => next.shadows[index].hp = Number(e.target.value))} style={{ width: "65px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold", padding: "4px" }} />
                           <span style={{ color: "#000" }}>/</span>
-                          <input disabled={!isGm} type="number" value={shadow.maxHp ?? 100} onChange={(e) => updateGm((next) => next.shadows[index].maxHp = Number(e.target.value))} style={{ width: "45px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold" }} />
+                          <input disabled={!isGm} type="number" value={shadow.maxHp ?? 100} onChange={(e) => updateGm((next) => next.shadows[index].maxHp = Number(e.target.value))} style={{ width: "65px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold", padding: "4px" }} />
                         </div>
                       </div>
 
-                      <div style={{ width: "100%", height: "110px", background: "#111", border: "2px solid var(--ink)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                      <div style={{ width: "100%", height: "200px", background: "#111", border: "2px solid var(--ink)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
                         {shadow.sprite ? (
                           <img src={shadow.sprite} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                         ) : (
-                          <span style={{ fontFamily: "Bebas Neue", color: "#555", fontSize: "14px" }}>NO SPRITE</span>
+                          <span style={{ fontFamily: "Bebas Neue", color: "#555", fontSize: "16px" }}>NO SPRITE</span>
                         )}
                       </div>
 
                       {isGm && (
-                        <label style={{ padding: "4px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)", fontFamily: "Bebas Neue", fontSize: "14px", fontWeight: "bold", boxShadow: "2px 2px 0 var(--ink)" }}>
+                        <label style={{ padding: "8px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)", fontFamily: "Bebas Neue", fontSize: "16px", fontWeight: "bold", boxShadow: "2px 2px 0 var(--ink)" }}>
                           CHANGE IMAGE
                           <input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => handleImageUpload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} />
                         </label>
                       )}
 
-                      <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                        <span style={{ fontFamily: "Bebas Neue", fontSize: "13px", color: "#000" }}>TL</span>
-                        <input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} style={{ width: "40px", textAlign: "center", border: "2px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold" }} />
-                        <input disabled={!isGm} value={shadow.status} placeholder="Ailment / Status" onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} style={{ flex: 1, border: "2px solid var(--ink)", background: "#fff", color: "#000", padding: "2px 6px", fontWeight: "bold" }} />
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <span style={{ fontFamily: "Bebas Neue", fontSize: "15px", color: "#000" }}>TL</span>
+                        <input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} style={{ width: "55px", textAlign: "center", border: "2px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold", padding: "4px" }} />
+                        <input disabled={!isGm} value={shadow.status} placeholder="Ailment / Status" onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} style={{ flex: 1, border: "2px solid var(--ink)", background: "#fff", color: "#000", padding: "6px 8px", fontWeight: "bold" }} />
                       </div>
 
                     </div>
