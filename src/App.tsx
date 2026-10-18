@@ -194,9 +194,6 @@ export default function App() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [placingPin, setPlacingPin] = useState(false);
-  const [selectedPinIconUrl, setSelectedPinIconUrl] = useState(PIN_ICONS[2].url);
-  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
 
   const [cropData, setCropData] = useState<{ src: string; callback: (url: string) => void } | null>(null);
@@ -370,27 +367,6 @@ export default function App() {
 
   const handleMapMouseDown = (e: MouseEvent<HTMLDivElement>) => {
     if (mode !== "map") return;
-
-    if (placingPin) {
-      const bounds = e.currentTarget.getBoundingClientRect();
-      const x = ((e.clientX - bounds.left) / bounds.width) * 100;
-      const y = ((e.clientY - bounds.top) / bounds.height) * 100;
-      updateGm((next) => {
-        if (!next.map.pins) next.map.pins = [];
-        next.map.pins.push({
-          id: crypto.randomUUID(),
-          x,
-          y,
-          label: `LOC ${next.map.pins.length + 1}`,
-          tooltip: "Point of Interest",
-          iconUrl: selectedPinIconUrl
-        });
-      });
-      setPlacingPin(false);
-      addToast("PIN DROPPED", "success");
-      return;
-    }
-
     if ((e.target as HTMLElement).closest("input,button,label,textarea,select,.campaign-pin")) return;
     const startX = e.clientX - pan.x;
     const startY = e.clientY - pan.y;
@@ -406,15 +382,6 @@ export default function App() {
 
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
-  };
-
-  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
-    if (mode !== "map" || !placingPin) return;
-    const bounds = e.currentTarget.getBoundingClientRect();
-    setCursorPos({
-      x: e.clientX - bounds.left,
-      y: e.clientY - bounds.top
-    });
   };
 
   const toggleRole = () => {
@@ -498,7 +465,7 @@ export default function App() {
             <div className="mode-switcher">{(["combat", "roam", "map"] as Mode[]).map((item) => <button className={mode === item ? "active" : ""} onClick={() => setMode(item)} key={item}>{item === "roam" ? "FREE ROAM" : item.toUpperCase()}</button>)}</div>
           </div>
 
-          <div className="map-frame" onWheel={handleWheel} onMouseDown={handleMapMouseDown} onMouseMove={handleMouseMove} style={{ overflow: "hidden", position: "relative" }}>
+          <div className="map-frame" onWheel={handleWheel} onMouseDown={handleMapMouseDown} style={{ overflow: "hidden", position: "relative" }}>
             <div style={{ transform: mode === "map" ? `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)` : "none", transformOrigin: "center", width: "100%", height: "100%", position: "absolute", inset: 0 }}>
               
               {/* COMBAT MODE */}
@@ -617,7 +584,7 @@ export default function App() {
               </div>}
 
               {/* MAP MODE */}
-              {mode === "map" && <div className={`world-map ${c.map.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.map.background ? { backgroundImage: `url(${c.map.background})`, backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center" } : {}) }}>
+              {mode === "map" && <div className={`world-map ${c.map.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.map.background ? { backgroundImage: `url(${c.map.background})`, backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" } : {}) }}>
                 {!c.map.background && <><div className="map-water" /><div className="district north"><span>NORTH WARD</span></div><div className="district central"><span>CENTRAL</span></div><div className="district docks"><span>DOCKS</span></div><div className="district old-town"><span>OLD TOWN</span></div></>}
                 
                 {c.map.pins.map((pin, index) => (
@@ -629,7 +596,6 @@ export default function App() {
                     onMouseLeave={() => setHoveredPinId(null)}
                   >
                     <div style={{ display: "flex", alignItems: "center", background: "#000", color: "#fff", border: "2px solid var(--mint)", padding: "4px 8px", gap: "6px", boxShadow: "3px 3px 0 var(--mint)", cursor: "pointer" }}>
-                      {/* Black pin icon on the map */}
                       <img src={pin.iconUrl || PIN_ICONS[2].url} alt="" style={{ width: "20px", height: "20px", filter: "invert(1)" }} />
                       <input 
                         disabled={!isGm}
@@ -661,34 +627,6 @@ export default function App() {
                     )}
                   </div>
                 ))}
-
-                {placingPin && (
-                  <div style={{ position: "absolute", left: cursorPos.x, top: cursorPos.y, pointerEvents: "none", transform: "translate(-50%, -100%)", zIndex: 100 }}>
-                    <div style={{ background: "#000", color: "#fff", padding: "6px 12px", border: "3px solid var(--mint)", display: "flex", alignItems: "center", gap: "8px", boxShadow: "4px 4px 0 var(--mint)" }}>
-                      {/* Black pin icon preview */}
-                      <img src={selectedPinIconUrl} alt="" style={{ width: "20px", height: "20px", filter: "invert(1)" }} />
-                      <strong style={{ fontFamily: "Bebas Neue, sans-serif", color: "var(--mint)" }}>CLICK TO PLACE</strong>
-                    </div>
-                  </div>
-                )}
-
-                {isGm && (
-                  <div style={{ position: "absolute", bottom: 16, right: 16, display: "flex", flexDirection: "column", gap: "8px", zIndex: 20, background: "#000", color: "#fff", padding: "12px", border: "3px solid var(--mint)", boxShadow: "4px 4px 0 var(--mint)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", maxWidth: "340px" }}>
-                      <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "14px", color: "var(--mint)" }}>CHOOSE ICON:</span>
-                      {PIN_ICONS.map((ic) => (
-                        <button key={ic.url} title={ic.name} onClick={() => setSelectedPinIconUrl(ic.url)} style={{ background: selectedPinIconUrl === ic.url ? "var(--mint)" : "#333", border: "2px solid var(--mint)", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          {/* White pin icon in the drop menu */}
-                          <img src={ic.url} alt={ic.name} style={{ width: "20px", height: "20px", filter: "none" }} />
-                        </button>
-                      ))}
-                    </div>
-                    <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
-                      <button type="button" onClick={() => setPlacingPin(!placingPin)} style={{ background: placingPin ? "var(--mint)" : "#222", color: placingPin ? "#000" : "#fff", border: "2px solid var(--mint)", fontWeight: "bold", padding: "6px 12px", cursor: "pointer", fontFamily: "Bebas Neue, sans-serif" }}>{placingPin ? "CANCEL" : "+ DROP PIN"}</button>
-                      <button type="button" onClick={() => updateGm((next) => next.map.pins = [])} style={{ border: "2px solid var(--mint)", background: "#222", color: "#fff", fontWeight: "bold", padding: "6px 12px", cursor: "pointer", fontFamily: "Bebas Neue, sans-serif" }}>CLEAR PINS</button>
-                    </div>
-                  </div>
-                )}
 
                 {isGm && <label className="background-upload"><strong>SWAP MAP IMAGE</strong><input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, "gm", (url) => updateGm((next) => next.map.background = url))} /></label>}
               </div>}
