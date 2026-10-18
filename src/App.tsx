@@ -20,26 +20,6 @@ const weekdays = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const seasons = ["WINTER", "SPRING", "SUMMER", "FALL"];
 
-function Login({ onReady }: { onReady: (selectedRole: Role) => void }) {
-  const [selectedRole, setSelectedRole] = useState<Role>("player");
-  return (
-    <main className="login-screen">
-      <div className="noise" />
-      <section className="login-card">
-        <div className="login-mark">RP</div>
-        <span>SHARED CAMPAIGN TABLE</span>
-        <strong>CHOOSE YOUR ROLE</strong>
-        <p>Select whether you are joining as the Game Master (GM) or a Player Character (PC).</p>
-        <div className="role-selector-options" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", margin: "20px 0" }}>
-          <button type="button" onClick={() => setSelectedRole("gm")} style={{ padding: "16px", border: "3px solid var(--ink)", background: selectedRole === "gm" ? "var(--mint)" : "var(--paper)", color: "var(--ink)", fontFamily: "Bebas Neue", fontSize: "20px", cursor: "pointer", boxShadow: selectedRole === "gm" ? "4px 4px 0 var(--ink)" : "none" }}>GM (GAME MASTER)</button>
-          <button type="button" onClick={() => setSelectedRole("player")} style={{ padding: "16px", border: "3px solid var(--ink)", background: selectedRole === "player" ? "var(--mint)" : "var(--paper)", color: "var(--ink)", fontFamily: "Bebas Neue", fontSize: "20px", cursor: "pointer", boxShadow: selectedRole === "player" ? "4px 4px 0 var(--ink)" : "none" }}>PC (PLAYER)</button>
-        </div>
-        <button type="button" onClick={() => onReady(selectedRole)}>ENTER CAMPAIGN</button>
-      </section>
-    </main>
-  );
-}
-
 function StepControl({ label, value, disabled, previous, next }: { label: string; value: string; disabled: boolean; previous: () => void; next: () => void }) {
   return <div className="step-control"><button disabled={disabled} onClick={previous}>‹</button><div><span>{label}</span><strong>{value}</strong></div><button disabled={disabled} onClick={next}>›</button></div>;
 }
@@ -238,16 +218,28 @@ function App() {
       setCampaign(res.campaign);
       setNotice("SAVED");
     } catch (e) {
-      setNotice("ADD PC FAILED");
+      updateGm((next) => {
+        next.players.push({
+          id: crypto.randomUUID(),
+          name: `PC ${next.players.length + 1}`,
+          role: "Attacker",
+          hp: 100,
+          sp: 50,
+          initial: "P",
+        });
+      });
     }
   };
 
   const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
+    if (mode !== "map") return;
     e.preventDefault();
     setZoom((prev) => Math.max(1, Math.min(3, prev - e.deltaY * 0.002)));
   };
 
   const handleMapMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+    if (mode !== "map") return;
+
     if (placingPin) {
       const bounds = e.currentTarget.getBoundingClientRect();
       const x = ((e.clientX - bounds.left) / bounds.width) * 100;
@@ -283,7 +275,7 @@ function App() {
   };
 
   const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
-    if (!placingPin) return;
+    if (mode !== "map" || !placingPin) return;
     const bounds = e.currentTarget.getBoundingClientRect();
     setCursorPos({
       x: e.clientX - bounds.left,
@@ -291,16 +283,7 @@ function App() {
     });
   };
 
-  if (!authenticated) {
-    return <Login onReady={(chosenRole) => { 
-      setRole(chosenRole); 
-      setAuthenticated(true); 
-      sessionStorage.setItem("persona_role", chosenRole);
-      sessionStorage.setItem("persona_auth", "true");
-      load(chosenRole); 
-    }} />;
-  }
-  if (!campaign) return <main className="loading-screen">SYNCING SHARED STATE…</main>;
+  if (!authenticated || !campaign) return <main className="loading-screen">SYNCING SHARED STATE…</main>;
 
   const c = campaign;
 
@@ -332,19 +315,19 @@ function App() {
           </div>
 
           <div className="map-frame" onWheel={handleWheel} onMouseDown={handleMapMouseDown} onMouseMove={handleMouseMove} style={{ overflow: "hidden", position: "relative" }}>
-            <div style={{ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`, transformOrigin: "center", width: "100%", height: "100%", position: "absolute", inset: 0 }}>
+            <div style={{ transform: mode === "map" ? `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)` : "none", transformOrigin: "center", width: "100%", height: "100%", position: "absolute", inset: 0 }}>
               
               {mode === "combat" && <div className={`dungeon-scene ${c.battle.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.battle.background ? { backgroundImage: `url(${c.battle.background})`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}>
                 {!c.battle.background && <><div className="ceiling-lines" /><div className="corridor-end"><span /><span /></div><div className="floor-grid" /></>}
                 {c.shadows.map((shadow, index) => (
                   <TransformBox key={shadow.id} x={shadow.x ?? (40 + index * 160)} y={shadow.y ?? 50} width={shadow.width ?? 220} height={shadow.height ?? 280} disabled={!isGm} onUpdate={(box) => updateGm((next) => { next.shadows[index].x = box.x; next.shadows[index].y = box.y; next.shadows[index].width = box.width; next.shadows[index].height = box.height; })}>
-                    <div className="enemy-unit" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "var(--paper)", border: "2px solid var(--ink)", padding: "8px", boxSizing: "border-box" }}>
-                      <div className="enemy-name" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div className="enemy-unit" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "transparent", border: "none", padding: "0", boxSizing: "border-box" }}>
+                      <div className="enemy-name" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--paper)", border: "2px solid var(--ink)", padding: "4px" }}>
                         <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ width: "50%" }} />
                         <div className="enemy-hp" style={{ width: "45%" }}><i style={{ width: `${shadow.hp}%` }} /><span>{shadow.hp} HP</span></div>
                       </div>
-                      <div className={`shadow-figure ${shadow.sprite ? "has-sprite" : ""}`} style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "120px", marginTop: "4px" }}>
-                        {shadow.sprite ? <img src={shadow.sprite} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <><i className="horn left" /><i className="horn right" /><span className="shadow-head"><b /><b /></span><span className="shadow-body" /><i className="shadow-arm left" /><i className="shadow-arm right" /><i className="shadow-leg left" /><i className="shadow-leg right" /></>}
+                      <div className={`shadow-figure ${shadow.sprite ? "has-sprite" : ""}`} style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", marginTop: "4px" }}>
+                        {shadow.sprite ? <img src={shadow.sprite} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <><i className="horn left" /><i className="horn right" /><span className="shadow-head"><b /><b /></span><span className="shadow-body" /><i className="shadow-arm left" /><i className="shadow-arm right" /><i className="shadow-leg left" /><i className="shadow-leg right" /></>}
                       </div>
                       {isGm && <label style={{ padding: "6px", fontSize: "11px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)", display: "block", marginTop: "4px" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
                       <div className="enemy-status" style={{ marginTop: "4px" }}><span>TL</span><input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} /><input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} /></div>
@@ -364,7 +347,7 @@ function App() {
                 <div className="location-card"><span>CURRENT LOCATION</span><input disabled={!isGm} value={c.roam.location} onChange={(event) => updateGm((next) => next.roam.location = event.target.value)} /><textarea disabled={!isGm} value={c.roam.details} onChange={(event) => updateGm((next) => next.roam.details = event.target.value)} /></div>
               </div>}
 
-              {mode === "map" && <div className={`world-map ${c.map.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.map.background ? { backgroundImage: `url(${c.map.background})`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}>
+              {mode === "map" && <div className={`world-map ${c.map.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.map.background ? { backgroundImage: `url(${c.map.background})`, backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center" } : {}) }}>
                 {!c.map.background && <><div className="map-water" /><div className="district north"><span>NORTH WARD</span></div><div className="district central"><span>CENTRAL</span></div><div className="district docks"><span>DOCKS</span></div><div className="district old-town"><span>OLD TOWN</span></div></>}
                 
                 {c.map.pins.map((pin, index) => <div className="campaign-pin" style={{ left: `${pin.x}%`, top: `${pin.y}%`, position: "absolute" }} key={pin.id}><i /><span>{pin.label}</span><div className="pin-tooltip">{isGm ? <><input value={pin.tooltip} onChange={(event) => updateGm((next) => next.map.pins[index].tooltip = event.target.value)} /><button onClick={() => updateGm((next) => next.map.pins.splice(index, 1))}>×</button></> : pin.tooltip}</div></div>)}
