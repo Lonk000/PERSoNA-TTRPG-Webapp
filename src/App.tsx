@@ -46,7 +46,6 @@ function Mark({ children }: { children: React.ReactNode }) {
   return <span className="mark">{children}</span>;
 }
 
-// Image Cropper Modal Component
 function ImageCropperModal({ imageSrc, onCancel, onCropComplete }: { imageSrc: string; onCancel: () => void; onCropComplete: (croppedUrl: string) => void }) {
   const [crop, setCrop] = useState({ x: 10, y: 10, width: 80, height: 80 });
   const [dragging, setDragging] = useState<string | null>(null);
@@ -199,6 +198,7 @@ export default function App() {
   const [placingPin, setPlacingPin] = useState(false);
   const [selectedPinIconUrl, setSelectedPinIconUrl] = useState(PIN_ICONS[2].url);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+  const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
 
   const [cropData, setCropData] = useState<{ src: string; callback: (url: string) => void } | null>(null);
 
@@ -496,7 +496,6 @@ export default function App() {
                   <DraggableShadowBox key={shadow.id} x={shadow.x ?? (30 + (index % 4) * 300)} y={shadow.y ?? (30 + Math.floor(index / 4) * 40)} disabled={!isGm} onUpdate={(p) => updateGm((next) => { next.shadows[index].x = p.x; next.shadows[index].y = p.y; })}>
                     <div style={{ width: "100%", background: "var(--paper)", border: "3px solid var(--ink)", padding: "10px", boxShadow: "4px 4px 0 var(--ink)", display: "flex", flexDirection: "column", gap: "8px" }}>
                       
-                      {/* Shadow Controls top */}
                       {isGm && (
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid var(--ink)", paddingBottom: "4px" }}>
                           <div style={{ display: "flex", gap: "4px" }}>
@@ -511,17 +510,16 @@ export default function App() {
                         <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ flex: 1, background: "#fff", border: "2px solid var(--ink)", padding: "4px 8px", fontWeight: "900", fontFamily: "Bebas Neue", fontSize: "18px", color: "#000" }} />
                       </div>
 
-                      {/* HP Inputs */}
+                      {/* Fixed HP Inputs with dark text */}
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#eee", border: "2px solid var(--ink)", padding: "4px 8px" }}>
                         <span style={{ fontFamily: "Bebas Neue", fontSize: "14px", fontWeight: "bold", color: "#000" }}>HP:</span>
                         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                          <input disabled={!isGm} type="number" value={shadow.hp} onChange={(e) => updateGm((next) => next.shadows[index].hp = Number(e.target.value))} style={{ width: "50px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", fontWeight: "bold" }} />
-                          <span>/</span>
-                          <input disabled={!isGm} type="number" value={shadow.maxHp ?? 100} onChange={(e) => updateGm((next) => next.shadows[index].maxHp = Number(e.target.value))} style={{ width: "50px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", fontWeight: "bold" }} />
+                          <input disabled={!isGm} type="number" value={shadow.hp} onChange={(e) => updateGm((next) => next.shadows[index].hp = Number(e.target.value))} style={{ width: "50px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold" }} />
+                          <span style={{ color: "#000" }}>/</span>
+                          <input disabled={!isGm} type="number" value={shadow.maxHp ?? 100} onChange={(e) => updateGm((next) => next.shadows[index].maxHp = Number(e.target.value))} style={{ width: "50px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold" }} />
                         </div>
                       </div>
 
-                      {/* Sprite Image Container */}
                       <div style={{ width: "100%", height: "180px", background: "#111", border: "2px solid var(--ink)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
                         {shadow.sprite ? (
                           <img src={shadow.sprite} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
@@ -537,11 +535,11 @@ export default function App() {
                         </label>
                       )}
 
-                      {/* TL & Status */}
+                      {/* Fixed TL & Status inputs with dark text */}
                       <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                         <span style={{ fontFamily: "Bebas Neue", fontSize: "14px", color: "#000" }}>TL</span>
-                        <input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} style={{ width: "45px", textAlign: "center", border: "2px solid var(--ink)", background: "#fff", fontWeight: "bold" }} />
-                        <input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} style={{ flex: 1, border: "2px solid var(--ink)", background: "#fff", padding: "2px 6px", fontWeight: "bold" }} />
+                        <input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} style={{ width: "45px", textAlign: "center", border: "2px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold" }} />
+                        <input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} style={{ flex: 1, border: "2px solid var(--ink)", background: "#fff", color: "#000", padding: "2px 6px", fontWeight: "bold" }} />
                       </div>
 
                     </div>
@@ -583,7 +581,6 @@ export default function App() {
                 
                 <div className="location-card"><span>CURRENT LOCATION</span><input disabled={!isGm} value={c.roam.location} onChange={(event) => updateGm((next) => next.roam.location = event.target.value)} /><textarea disabled={!isGm} value={c.roam.details} onChange={(event) => updateGm((next) => next.roam.details = event.target.value)} /></div>
 
-                {/* Points of Interest Top-Right (Solid Black Style) */}
                 <div style={{ position: "absolute", top: "20px", right: "20px", width: "320px", background: "#000", color: "#fff", border: "3px solid var(--mint)", padding: "12px", boxShadow: "4px 4px 0 var(--mint)", zIndex: 15 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid var(--mint)", paddingBottom: "6px", marginBottom: "8px" }}>
                     <strong style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "18px", color: "var(--mint)" }}>POINTS OF INTEREST</strong>
@@ -603,36 +600,48 @@ export default function App() {
                 </div>
               </div>}
 
-              {/* MAP MODE WITH BLACK PIN BOX */}
+              {/* MAP MODE */}
               {mode === "map" && <div className={`world-map ${c.map.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.map.background ? { backgroundImage: `url(${c.map.background})`, backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center" } : {}) }}>
                 {!c.map.background && <><div className="map-water" /><div className="district north"><span>NORTH WARD</span></div><div className="district central"><span>CENTRAL</span></div><div className="district docks"><span>DOCKS</span></div><div className="district old-town"><span>OLD TOWN</span></div></>}
                 
                 {c.map.pins.map((pin, index) => (
-                  <div className="campaign-pin" style={{ left: `${pin.x}%`, top: `${pin.y}%`, position: "absolute", zIndex: 15 }} key={pin.id}>
+                  <div 
+                    className="campaign-pin" 
+                    style={{ left: `${pin.x}%`, top: `${pin.y}%`, position: "absolute", zIndex: 15 }} 
+                    key={pin.id}
+                    onMouseEnter={() => setHoveredPinId(pin.id)}
+                    onMouseLeave={() => setHoveredPinId(null)}
+                  >
                     <div style={{ display: "flex", alignItems: "center", background: "#000", color: "#fff", border: "2px solid var(--mint)", padding: "4px 8px", gap: "6px", boxShadow: "3px 3px 0 var(--mint)", cursor: "pointer" }}>
                       <img src={pin.iconUrl || PIN_ICONS[2].url} alt="" style={{ width: "20px", height: "20px", filter: "invert(1)" }} />
-                      <span style={{ fontWeight: "bold", fontFamily: "Bebas Neue, sans-serif", fontSize: "15px", color: "var(--mint)" }}>{pin.label}</span>
+                      <input 
+                        disabled={!isGm}
+                        value={pin.label} 
+                        onChange={(e) => updateGm((next) => next.map.pins[index].label = e.target.value)}
+                        style={{ fontWeight: "bold", fontFamily: "Bebas Neue, sans-serif", fontSize: "15px", color: "var(--mint)", background: "transparent", border: "none", width: "90px" }} 
+                      />
+                      {isGm && <button onClick={() => updateGm((next) => next.map.pins.splice(index, 1))} style={{ background: "transparent", border: "none", color: "#ff4d4d", cursor: "pointer", fontWeight: "bold" }}>×</button>}
                     </div>
                     
-                    <div className="pin-tooltip" style={{ background: "#000", color: "#fff", border: "2px solid var(--mint)", padding: "10px", boxShadow: "4px 4px 0 var(--mint)", minWidth: "180px" }}>
-                      {isGm ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                          <select value={pin.iconUrl} onChange={(e) => updateGm((next) => next.map.pins[index].iconUrl = e.target.value)} style={{ border: "2px solid var(--mint)", background: "#111", color: "#fff", padding: "2px", fontWeight: "bold" }}>
-                            {PIN_ICONS.map((ic) => <option key={ic.url} value={ic.url}>{ic.name}</option>)}
-                          </select>
-                          <div style={{ display: "flex", gap: "4px" }}>
-                            <input value={pin.label} onChange={(event) => updateGm((next) => next.map.pins[index].label = event.target.value)} style={{ flex: "1", fontWeight: "bold", border: "1px solid #444", background: "#111", color: "#fff", padding: "2px 4px" }} />
-                            <button onClick={() => updateGm((next) => next.map.pins.splice(index, 1))} style={{ background: "var(--mint)", color: "#000", border: "none", padding: "0 6px", cursor: "pointer", fontWeight: "bold" }}>×</button>
+                    {hoveredPinId === pin.id && (
+                      <div style={{ position: "absolute", left: "105%", top: "0", background: "#000", color: "#fff", border: "2px solid var(--mint)", padding: "10px", boxShadow: "4px 4px 0 var(--mint)", minWidth: "180px", zIndex: 50 }}>
+                        {isGm ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                            <span style={{ fontSize: "10px", color: "var(--mint)", fontFamily: "Bebas Neue" }}>TOOLTIP NOTES:</span>
+                            <textarea 
+                              value={pin.tooltip} 
+                              onChange={(event) => updateGm((next) => next.map.pins[index].tooltip = event.target.value)} 
+                              style={{ width: "100%", height: "55px", fontSize: "12px", border: "1px solid #444", background: "#111", color: "#fff", padding: "4px", resize: "none" }} 
+                            />
                           </div>
-                          <textarea value={pin.tooltip} onChange={(event) => updateGm((next) => next.map.pins[index].tooltip = event.target.value)} style={{ width: "100%", height: "45px", fontSize: "12px", border: "1px solid #444", background: "#111", color: "#fff", padding: "4px" }} />
-                        </div>
-                      ) : (
-                        <div>
-                          <strong style={{ color: "var(--mint)" }}>{pin.label}</strong>
-                          <p style={{ margin: "4px 0 0 0", fontSize: "12px" }}>{pin.tooltip}</p>
-                        </div>
-                      )}
-                    </div>
+                        ) : (
+                          <div>
+                            <strong style={{ color: "var(--mint)", fontFamily: "Bebas Neue", fontSize: "16px" }}>{pin.label}</strong>
+                            <p style={{ margin: "4px 0 0 0", fontSize: "12px" }}>{pin.tooltip}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
 
@@ -650,8 +659,8 @@ export default function App() {
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", maxWidth: "340px" }}>
                       <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "14px", color: "var(--mint)" }}>CHOOSE ICON:</span>
                       {PIN_ICONS.map((ic) => (
-                        <button key={ic.url} title={ic.name} onClick={() => setSelectedPinIconUrl(ic.url)} style={{ background: selectedPinIconUrl === ic.url ? "var(--mint)" : "#222", border: "2px solid var(--mint)", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center" }}>
-                          <img src={ic.url} alt={ic.name} style={{ width: "16px", height: "16px", filter: selectedPinIconUrl === ic.url ? "none" : "invert(1)" }} />
+                        <button key={ic.url} title={ic.name} onClick={() => setSelectedPinIconUrl(ic.url)} style={{ background: selectedPinIconUrl === ic.url ? "var(--mint)" : "#222", border: "2px solid var(--mint)", cursor: "pointer", padding: "5px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <img src={ic.url} alt={ic.name} style={{ width: "18px", height: "18px", filter: selectedPinIconUrl === ic.url ? "invert(0)" : "invert(1)" }} />
                         </button>
                       ))}
                     </div>
@@ -681,27 +690,45 @@ export default function App() {
         </aside>
       </div>
 
-      {/* FOOTER PARTY BAR WITH EXACT MATCHING LAYOUT REFERENCE */}
-      <footer className="party-bar">
+      {/* FOOTER PARTY BAR */}
+      <footer className="party-bar" style={{ display: "grid", gridTemplateColumns: "120px 1fr 110px", alignItems: "stretch", overflow: "hidden" }}>
         <div className="party-label">
           <span>ACTIVE</span><strong>CREW</strong>
           <i>{String(c.players.length).padStart(2, "0")} PCS</i>
           {isGm && <button onClick={handleAddNewPlayer}>+ ADD PC</button>}
         </div>
-        <div className="party-members">
+
+        <div className="party-members" style={{ display: "flex", gap: "8px", padding: "6px 10px", overflowX: "hidden", width: "100%", alignItems: "center" }}>
           {c.players.map((player, index) => (
-            <div className={`hero-card ${index % 2 ? "white" : "mint"}`} key={player.id} style={{ display: "grid", gridTemplateColumns: "115px 110px", gridTemplateRows: "auto 95px auto", padding: "6px", gap: "4px", minWidth: "235px", background: "var(--paper)", border: "3px solid var(--ink)", boxShadow: "4px 4px 0 var(--ink)" }}>
+            <div 
+              className={`hero-card ${index % 2 ? "white" : "mint"}`} 
+              key={player.id} 
+              style={{ 
+                display: "grid", 
+                gridTemplateColumns: "1fr 1fr", 
+                gridTemplateRows: "auto 1fr auto", 
+                padding: "5px", 
+                gap: "3px", 
+                flex: "1 1 0px", 
+                minWidth: "0", 
+                maxWidth: "260px",
+                height: "100%",
+                background: "var(--paper)", 
+                border: "3px solid var(--ink)", 
+                boxShadow: "3px 3px 0 var(--ink)",
+                overflow: "hidden" 
+              }}
+            >
               
-              {/* Top Row: PC Number Tag, Name Input, Role Input, Remove Button */}
-              <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: "4px", background: "var(--paper)", border: "2px solid var(--ink)", padding: "2px" }}>
-                <span style={{ background: "var(--ink)", color: "var(--paper)", fontFamily: "Bebas Neue", fontSize: "15px", padding: "1px 6px" }}>PC {index + 1}</span>
+              <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: "3px", background: "var(--paper)", border: "2px solid var(--ink)", padding: "1px 3px", minWidth: 0 }}>
+                <span style={{ background: "var(--ink)", color: "var(--paper)", fontFamily: "Bebas Neue", fontSize: "13px", padding: "0 4px", whiteSpace: "nowrap" }}>PC {index + 1}</span>
                 <input
                   disabled={!isGm}
                   value={player.name}
                   onChange={(event) => updatePlayerLocal(player.id, { name: event.target.value })}
                   onBlur={(event) => persistPlayer(player.id, { name: event.target.value })}
                   placeholder="Name"
-                  style={{ flex: 1, minWidth: 0, fontWeight: "bold", border: "1px solid var(--ink)", background: "#fff", padding: "2px 4px", fontFamily: "Bebas Neue", fontSize: "16px" }}
+                  style={{ flex: 1, minWidth: 0, fontWeight: "bold", border: "1px solid var(--ink)", background: "#fff", padding: "1px 3px", fontFamily: "Bebas Neue", fontSize: "14px" }}
                 />
                 <input
                   disabled={!isGm}
@@ -709,7 +736,7 @@ export default function App() {
                   onChange={(event) => updatePlayerLocal(player.id, { role: event.target.value })}
                   onBlur={(event) => persistPlayer(player.id, { role: event.target.value })}
                   placeholder="Role"
-                  style={{ width: "60px", border: "1px solid var(--ink)", background: "#fff", padding: "2px 4px", fontFamily: "Bebas Neue", fontSize: "14px" }}
+                  style={{ width: "45px", minWidth: 0, border: "1px solid var(--ink)", background: "#fff", padding: "1px 2px", fontFamily: "Bebas Neue", fontSize: "12px" }}
                 />
                 {isGm && (
                   <button 
@@ -721,65 +748,60 @@ export default function App() {
                         updateGm((next) => { next.players = next.players.filter((p) => p.id !== player.id); });
                       }
                     }}
-                    style={{ background: "#ff4d4d", color: "#fff", border: "1px solid var(--ink)", width: "20px", height: "20px", fontSize: "10px", cursor: "pointer", fontWeight: "bold", display: "grid", placeItems: "center" }}
+                    style={{ background: "#ff4d4d", color: "#fff", border: "1px solid var(--ink)", width: "16px", height: "16px", fontSize: "9px", cursor: "pointer", fontWeight: "bold", display: "grid", placeItems: "center", flexShrink: 0 }}
                   >
                     ✕
                   </button>
                 )}
               </div>
 
-              {/* Middle Row Left: Hero Image Box */}
-              <label className={`portrait ${player.art ? "has-art" : ""}`} style={{ gridColumn: "1", gridRow: "2", height: "100%", width: "100%", border: "2px solid var(--ink)", background: "#181a20", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative", overflow: "hidden" }}>
-                {player.art ? <img src={player.art} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontFamily: "Bebas Neue", fontSize: "13px", color: "var(--mint)" }}>+ HERO IMG</span>}
+              <label className={`portrait ${player.art ? "has-art" : ""}`} style={{ gridColumn: "1", gridRow: "2", height: "100%", minHeight: "45px", width: "100%", border: "2px solid var(--ink)", background: "#181a20", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative", overflow: "hidden" }}>
+                {player.art ? <img src={player.art} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontFamily: "Bebas Neue", fontSize: "11px", color: "var(--mint)" }}>+ HERO</span>}
                 <input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => handleImageUpload(event, "player", async (url) => persistPlayer(player.id, { art: url }))} />
               </label>
 
-              {/* Middle Row Right: Persona Image Box */}
-              <label className={`portrait persona-art ${player.personaArt ? "has-art" : ""}`} style={{ gridColumn: "2", gridRow: "2 / span 2", height: "100%", width: "100%", border: "2px solid var(--ink)", background: "#181a20", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative", overflow: "hidden" }}>
-                {player.personaArt ? <img src={player.personaArt} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontFamily: "Bebas Neue", fontSize: "13px", color: "var(--mint)" }}>+ PERSONA IMG</span>}
+              <label className={`portrait persona-art ${player.personaArt ? "has-art" : ""}`} style={{ gridColumn: "2", gridRow: "2 / span 2", height: "100%", minHeight: "70px", width: "100%", border: "2px solid var(--ink)", background: "#181a20", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative", overflow: "hidden" }}>
+                {player.personaArt ? <img src={player.personaArt} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontFamily: "Bebas Neue", fontSize: "11px", color: "var(--mint)" }}>+ PERSONA</span>}
                 <input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => handleImageUpload(event, "player", async (url) => persistPlayer(player.id, { personaArt: url }))} />
               </label>
 
-              {/* Bottom Row Left: HP / SP Current & Max Inputs */}
-              <div style={{ gridColumn: "1", gridRow: "3", display: "flex", flexDirection: "column", gap: "2px" }}>
+              <div style={{ gridColumn: "1", gridRow: "3", display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
                 
-                {/* HP Row */}
-                <div style={{ display: "flex", alignItems: "center", background: "var(--paper)", border: "2px solid var(--ink)", padding: "1px 4px" }}>
-                  <span style={{ fontFamily: "Bebas Neue", fontSize: "12px", width: "18px", color: "#ff4d4d", fontWeight: "bold" }}>HP</span>
+                <div style={{ display: "flex", alignItems: "center", background: "var(--paper)", border: "2px solid var(--ink)", padding: "1px 2px", minWidth: 0 }}>
+                  <span style={{ fontFamily: "Bebas Neue", fontSize: "11px", width: "16px", color: "#ff4d4d", fontWeight: "bold" }}>HP</span>
                   <input 
                     type="number" 
                     value={player.hp} 
                     onChange={(e) => updatePlayerLocal(player.id, { hp: Number(e.target.value) })} 
                     onBlur={(e) => persistPlayer(player.id, { hp: Number(e.target.value) })} 
-                    style={{ width: "34px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", fontSize: "12px", fontWeight: "bold", fontFamily: "Bebas Neue" }} 
+                    style={{ width: "100%", minWidth: "22px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", fontSize: "11px", fontWeight: "bold", fontFamily: "Bebas Neue" }} 
                   />
-                  <span style={{ margin: "0 2px", fontSize: "11px" }}>/</span>
+                  <span style={{ margin: "0 1px", fontSize: "10px" }}>/</span>
                   <input 
                     type="number" 
                     value={player.maxHp ?? 100} 
                     onChange={(e) => updatePlayerLocal(player.id, { maxHp: Number(e.target.value) })} 
                     onBlur={(e) => persistPlayer(player.id, { maxHp: Number(e.target.value) })} 
-                    style={{ width: "34px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", fontSize: "12px", fontWeight: "bold", fontFamily: "Bebas Neue" }} 
+                    style={{ width: "100%", minWidth: "22px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", fontSize: "11px", fontWeight: "bold", fontFamily: "Bebas Neue" }} 
                   />
                 </div>
 
-                {/* SP Row */}
-                <div style={{ display: "flex", alignItems: "center", background: "var(--paper)", border: "2px solid var(--ink)", padding: "1px 4px" }}>
-                  <span style={{ fontFamily: "Bebas Neue", fontSize: "12px", width: "18px", color: "var(--mint)", fontWeight: "bold" }}>SP</span>
+                <div style={{ display: "flex", alignItems: "center", background: "var(--paper)", border: "2px solid var(--ink)", padding: "1px 2px", minWidth: 0 }}>
+                  <span style={{ fontFamily: "Bebas Neue", fontSize: "11px", width: "16px", color: "var(--mint)", fontWeight: "bold" }}>SP</span>
                   <input 
                     type="number" 
                     value={player.sp} 
                     onChange={(e) => updatePlayerLocal(player.id, { sp: Number(e.target.value) })} 
                     onBlur={(e) => persistPlayer(player.id, { sp: Number(e.target.value) })} 
-                    style={{ width: "34px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", fontSize: "12px", fontWeight: "bold", fontFamily: "Bebas Neue" }} 
+                    style={{ width: "100%", minWidth: "22px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", fontSize: "11px", fontWeight: "bold", fontFamily: "Bebas Neue" }} 
                   />
-                  <span style={{ margin: "0 2px", fontSize: "11px" }}>/</span>
+                  <span style={{ margin: "0 1px", fontSize: "10px" }}>/</span>
                   <input 
                     type="number" 
                     value={player.maxSp ?? 50} 
                     onChange={(e) => updatePlayerLocal(player.id, { maxSp: Number(e.target.value) })} 
                     onBlur={(e) => persistPlayer(player.id, { maxSp: Number(e.target.value) })} 
-                    style={{ width: "34px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", fontSize: "12px", fontWeight: "bold", fontFamily: "Bebas Neue" }} 
+                    style={{ width: "100%", minWidth: "22px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", fontSize: "11px", fontWeight: "bold", fontFamily: "Bebas Neue" }} 
                   />
                 </div>
 
@@ -788,6 +810,7 @@ export default function App() {
             </div>
           ))}
         </div>
+
         <div className="phase"><span>ACCESS</span><strong>{role.toUpperCase()}</strong><small>GLOBAL</small></div>
       </footer>
     </main>
