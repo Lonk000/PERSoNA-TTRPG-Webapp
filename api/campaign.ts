@@ -20,12 +20,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       let campaignData = null;
 
       try {
-        // List blobs to see if campaign.json already exists
         const { blobs } = await list({ prefix: PATHNAME });
         const existingBlob = blobs.find((b) => b.pathname === PATHNAME);
 
         if (existingBlob) {
-          // Fetch raw JSON bypassing CDN cache
           const response = await fetch(`${existingBlob.url}?t=${Date.now()}`, {
             headers: { "Cache-Control": "no-cache" },
           });
@@ -37,13 +35,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.error("Error reading blob:", e);
       }
 
-      // If no file exists or read failed, write default campaign state
       if (!campaignData) {
         campaignData = defaultCampaign;
         await put(PATHNAME, JSON.stringify(defaultCampaign), {
           access: "public",
           contentType: "application/json",
           addRandomSuffix: false,
+          allowOverwrite: true,
         });
       }
 
@@ -57,6 +55,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         access: "public",
         contentType: "application/json",
         addRandomSuffix: false,
+        allowOverwrite: true,
       });
 
       return res.status(200).json({ success: true });

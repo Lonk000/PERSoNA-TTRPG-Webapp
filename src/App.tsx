@@ -233,12 +233,40 @@ function App() {
     <main className="app-shell">
       <div className="noise" />
       <header className="calendar-bar">
-        <StepControl label="SEASON" value={seasons[c.calendar.season]} disabled={!isGm} previous={() => updateGm((next) => next.calendar.season = (next.calendar.season + 3) % 4)} next={() => updateGm((next) => next.calendar.season = (next.calendar.season + 1) % 4)} />
-        <StepControl label="MONTH" value={months[c.calendar.month]} disabled={!isGm} previous={() => updateGm((next) => next.calendar.month = (next.calendar.month + 11) % 12)} next={() => updateGm((next) => next.calendar.month = (next.calendar.month + 1) % 12)} />
+        <StepControl 
+          label="SEASON" 
+          value={seasons[c.calendar.season]} 
+          disabled={!isGm} 
+          previous={() => updateGm((next) => { next.calendar.season = (next.calendar.season + 3) % 4; })} 
+          next={() => updateGm((next) => { next.calendar.season = (next.calendar.season + 1) % 4; })} 
+        />
+        <StepControl 
+          label="MONTH" 
+          value={months[c.calendar.month]} 
+          disabled={!isGm} 
+          previous={() => updateGm((next) => { next.calendar.month = (next.calendar.month + 11) % 12; next.calendar.weekStart = 1; next.calendar.selectedDay = 0; })} 
+          next={() => updateGm((next) => { next.calendar.month = (next.calendar.month + 1) % 12; next.calendar.weekStart = 1; next.calendar.selectedDay = 0; })} 
+        />
         <div className="week-shell">
           <button className="week-arrow" disabled={!isGm} onClick={() => updateGm((next) => next.calendar.weekStart = Math.max(1, next.calendar.weekStart - 7))}>‹</button>
-          <div className="week-strip">{weekdays.map((day, index) => <button disabled={!isGm} className={`day ${c.calendar.selectedDay === index ? "active" : ""}`} onClick={() => updateGm((next) => next.calendar.selectedDay = index)} key={day}><span>{day}</span><strong>{c.calendar.weekStart + index}</strong></button>)}</div>
-          <button className="week-arrow" disabled={!isGm} onClick={() => updateGm((next) => next.calendar.weekStart = Math.min(25, next.calendar.weekStart + 7))}>›</button>
+          <div className="week-strip">
+            {weekdays.map((day, index) => {
+              const dayNum = c.calendar.weekStart + index;
+              const isValidDay = dayNum <= 31;
+              return (
+                <button 
+                  disabled={!isGm || !isValidDay} 
+                  className={`day ${c.calendar.selectedDay === index ? "active" : ""} ${!isValidDay ? "disabled-day" : ""}`} 
+                  onClick={() => updateGm((next) => next.calendar.selectedDay = index)} 
+                  key={day}
+                >
+                  <span>{day}</span>
+                  <strong>{isValidDay ? dayNum : ""}</strong>
+                </button>
+              );
+            })}
+          </div>
+          <button className="week-arrow" disabled={!isGm} onClick={() => updateGm((next) => next.calendar.weekStart = Math.min(22, next.calendar.weekStart + 7))}>›</button>
         </div>
         <div className="session-chip"><span>{role.toUpperCase()}</span><strong>{notice || "LIVE"}</strong><button onClick={handleSignOut}>SWITCH ROLE</button></div>
       </header>
@@ -262,7 +290,7 @@ function App() {
                 <div className="enemy-status"><span>TL</span><input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} /><input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} /></div>
                 {isGm && <input className="enemy-hp-control" type="number" min="0" max="100" value={shadow.hp} onChange={(event) => updateGm((next) => next.shadows[index].hp = Number(event.target.value))} />}
                 
-                {/* Shadow controls for GM */}
+                {/* Fixed Shadow controls for GM */}
                 {isGm && <div className="shadow-controls">
                   <button onClick={() => moveShadow(index, "left")} disabled={index === 0}>‹</button>
                   <button onClick={() => removeShadow(index)}>×</button>
