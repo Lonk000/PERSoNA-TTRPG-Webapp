@@ -48,45 +48,46 @@ function Mark({ children }: { children: React.ReactNode }) {
   return <span className="mark">{children}</span>;
 }
 
-// Photoshop-style interactive transform box for moving and resizing elements
-function TransformBox({ x = 10, y = 10, width = 160, height = 200, disabled, onUpdate, children }: { x?: number; y?: number; width?: number; height?: number; disabled: boolean; onUpdate: (box: { x: number; y: number; width: number; height: number }) => void; children: ReactNode }) {
+function TransformBox({ x = 10, y = 10, width = 140, height = 220, disabled, onUpdate, children }: { x?: number; y?: number; width?: number; height?: number; disabled: boolean; onUpdate: (box: { x: number; y: number; width: number; height: number }) => void; children: ReactNode }) {
   const [pos, setPos] = useState({ x, y, width, height });
-  const isDragging = useRef(false);
-  const resizeHandle = useRef<string | null>(null);
-  const dragStart = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     setPos({ x, y, width, height });
   }, [x, y, width, height]);
 
-  const handleMouseDown = (e: MouseEvent<HTMLDivElement>, handle: string | null = null) => {
+  const startDrag = (e: MouseEvent<HTMLDivElement>, handle: string | null = null) => {
     if (disabled) return;
     e.stopPropagation();
-    isDragging.current = true;
-    resizeHandle.current = handle;
-    dragStart.current = { x: e.clientX, y: e.clientY };
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const initialPos = { ...pos };
 
     const onMouseMove = (moveEvent: globalThis.MouseEvent) => {
-      if (!isDragging.current) return;
-      const dx = moveEvent.clientX - dragStart.current.x;
-      const dy = moveEvent.clientY - dragStart.current.y;
-      dragStart.current = { x: moveEvent.clientX, y: moveEvent.clientY };
+      const dx = moveEvent.clientX - startX;
+      const dy = moveEvent.clientY - startY;
 
-      setPos((prev) => {
-        let next = { ...prev };
-        if (!resizeHandle.current) {
-          next.x += dx;
-          next.y += dy;
+      setPos(() => {
+        let next = { ...initialPos };
+        if (!handle) {
+          next.x = initialPos.x + dx;
+          next.y = initialPos.y + dy;
         } else {
-          if (resizeHandle.current.includes("right")) next.width = Math.max(60, next.width + dx);
-          if (resizeHandle.current.includes("bottom")) next.height = Math.max(60, next.height + dy);
-          if (resizeHandle.current.includes("left")) {
-            next.width = Math.max(60, next.width - dx);
-            next.x += dx;
+          if (handle.includes("right")) next.width = Math.max(80, initialPos.width + dx);
+          if (handle.includes("bottom")) next.height = Math.max(100, initialPos.height + dy);
+          if (handle.includes("left")) {
+            const newW = initialPos.width - dx;
+            if (newW >= 80) {
+              next.width = newW;
+              next.x = initialPos.x + dx;
+            }
           }
-          if (resizeHandle.current.includes("top")) {
-            next.height = Math.max(60, next.height - dy);
-            next.y += dy;
+          if (handle.includes("top")) {
+            const newH = initialPos.height - dy;
+            if (newH >= 100) {
+              next.height = newH;
+              next.y = initialPos.y + dy;
+            }
           }
         }
         return next;
@@ -94,8 +95,6 @@ function TransformBox({ x = 10, y = 10, width = 160, height = 200, disabled, onU
     };
 
     const onMouseUp = () => {
-      isDragging.current = false;
-      resizeHandle.current = null;
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
       setPos((p) => {
@@ -109,14 +108,14 @@ function TransformBox({ x = 10, y = 10, width = 160, height = 200, disabled, onU
   };
 
   return (
-    <div style={{ position: "absolute", left: `${pos.x}px`, top: `${pos.y}px`, width: `${pos.width}px`, height: `${pos.height}px`, cursor: disabled ? "default" : "move" }} onMouseDown={(e) => handleMouseDown(e, null)}>
+    <div style={{ position: "absolute", left: `${pos.x}px`, top: `${pos.y}px`, width: `${pos.width}px`, height: `${pos.height}px`, cursor: disabled ? "default" : "move", zIndex: 5 }} onMouseDown={(e) => startDrag(e, null)}>
       {children}
       {!disabled && (
-        <div className="transform-overlay" style={{ position: "absolute", inset: "-4px", border: "2px dashed var(--mint)", pointerEvents: "none", zIndex: 10 }}>
-          <div onMouseDown={(e) => handleMouseDown(e, "top-left")} style={{ position: "absolute", top: -5, left: -5, width: 10, height: 10, background: "var(--ink)", border: "2px solid var(--mint)", pointerEvents: "auto", cursor: "nwse-resize" }} />
-          <div onMouseDown={(e) => handleMouseDown(e, "top-right")} style={{ position: "absolute", top: -5, right: -5, width: 10, height: 10, background: "var(--ink)", border: "2px solid var(--mint)", pointerEvents: "auto", cursor: "nesw-resize" }} />
-          <div onMouseDown={(e) => handleMouseDown(e, "bottom-left")} style={{ position: "absolute", bottom: -5, left: -5, width: 10, height: 10, background: "var(--ink)", border: "2px solid var(--mint)", pointerEvents: "auto", cursor: "nesw-resize" }} />
-          <div onMouseDown={(e) => handleMouseDown(e, "bottom-right")} style={{ position: "absolute", bottom: -5, right: -5, width: 10, height: 10, background: "var(--ink)", border: "2px solid var(--mint)", pointerEvents: "auto", cursor: "nwse-resize" }} />
+        <div style={{ position: "absolute", inset: "-4px", border: "2px dashed var(--mint)", pointerEvents: "none" }}>
+          <div onMouseDown={(e) => startDrag(e, "top-left")} style={{ position: "absolute", top: -6, left: -6, width: 12, height: 12, background: "var(--ink)", border: "2px solid var(--mint)", pointerEvents: "auto", cursor: "nwse-resize" }} />
+          <div onMouseDown={(e) => startDrag(e, "top-right")} style={{ position: "absolute", top: -6, right: -6, width: 12, height: 12, background: "var(--ink)", border: "2px solid var(--mint)", pointerEvents: "auto", cursor: "nesw-resize" }} />
+          <div onMouseDown={(e) => startDrag(e, "bottom-left")} style={{ position: "absolute", bottom: -6, left: -6, width: 12, height: 12, background: "var(--ink)", border: "2px solid var(--mint)", pointerEvents: "auto", cursor: "nesw-resize" }} />
+          <div onMouseDown={(e) => startDrag(e, "bottom-right")} style={{ position: "absolute", bottom: -6, right: -6, width: 12, height: 12, background: "var(--ink)", border: "2px solid var(--mint)", pointerEvents: "auto", cursor: "nwse-resize" }} />
         </div>
       )}
     </div>
@@ -171,6 +170,24 @@ function App() {
     }, 450);
   };
 
+  const updatePlayerLocal = (id: string, patch: Partial<Player>) => {
+    dirty.current = true;
+    setCampaign((current) => current ? { ...current, players: current.players.map((p) => p.id === id ? { ...p, ...patch } : p) } : current);
+  };
+
+  const persistPlayer = async (id: string, patch: Partial<Player>) => {
+    try {
+      const result = await patchPlayer(id, patch);
+      setCampaign(result.campaign);
+      setNotice("SAVED");
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : "SAVE FAILED");
+      load();
+    } finally {
+      dirty.current = false;
+    }
+  };
+
   const upload = async (event: ChangeEvent<HTMLInputElement>, scope: "gm" | "player", apply: (url: string) => void | Promise<void>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -197,7 +214,7 @@ function App() {
 
   const addShadow = () => {
     updateGm((next) => {
-      next.shadows.push({ id: crypto.randomUUID(), name: `Shadow ${next.shadows.length + 1}`, hp: 100, threat: 1, status: "Normal", x: 40 + next.shadows.length * 20, y: 30, width: 140, height: 180 });
+      next.shadows.push({ id: crypto.randomUUID(), name: `Shadow ${next.shadows.length + 1}`, hp: 100, threat: 1, status: "Normal", x: 40 + next.shadows.length * 150, y: 60, width: 140, height: 210 });
     });
   };
 
@@ -238,13 +255,13 @@ function App() {
             {mode === "combat" && <div className={`dungeon-scene ${c.battle.background ? "custom-bg" : ""}`} style={c.battle.background ? { backgroundImage: `url(${c.battle.background})` } : undefined}>
               {!c.battle.background && <><div className="ceiling-lines" /><div className="corridor-end"><span /><span /></div><div className="floor-grid" /></>}
               {c.shadows.map((shadow, index) => (
-                <TransformBox key={shadow.id} x={shadow.x ?? (50 + index * 120)} y={shadow.y ?? 100} width={shadow.width ?? 140} height={shadow.height ?? 190} disabled={!isGm} onUpdate={(box) => updateGm((next) => { next.shadows[index].x = box.x; next.shadows[index].y = box.y; next.shadows[index].width = box.width; next.shadows[index].height = box.height; })}>
-                  <div className="enemy-unit" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
+                <TransformBox key={shadow.id} x={shadow.x ?? (40 + index * 150)} y={shadow.y ?? 50} width={shadow.width ?? 140} height={shadow.height ?? 220} disabled={!isGm} onUpdate={(box) => updateGm((next) => { next.shadows[index].x = box.x; next.shadows[index].y = box.y; next.shadows[index].width = box.width; next.shadows[index].height = box.height; })}>
+                  <div className="enemy-unit" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "var(--paper)", border: "2px solid var(--ink)", padding: "6px", boxSizing: "border-box" }}>
                     <div className="enemy-name"><input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} /><div className="enemy-hp"><i style={{ width: `${shadow.hp}%` }} /><span>{shadow.hp} HP</span></div></div>
-                    <div className={`shadow-figure ${shadow.sprite ? "has-sprite" : ""}`} style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+                    <div className={`shadow-figure ${shadow.sprite ? "has-sprite" : ""}`} style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {shadow.sprite ? <img src={shadow.sprite} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <><i className="horn left" /><i className="horn right" /><span className="shadow-head"><b /><b /></span><span className="shadow-body" /><i className="shadow-arm left" /><i className="shadow-arm right" /><i className="shadow-leg left" /><i className="shadow-leg right" /></>}
                     </div>
-                    {isGm && <label className="background-upload change-sprite-btn" style={{ padding: "4px", fontSize: "10px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
+                    {isGm && <label style={{ padding: "4px", fontSize: "10px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)", display: "block", marginTop: "2px" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
                     <div className="enemy-status"><span>TL</span><input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} /><input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} /></div>
                     {isGm && <div className="shadow-controls" style={{ display: "flex", gap: "4px", marginTop: "4px" }}><button type="button" onClick={() => moveShadow(index, "left")} disabled={index === 0}>‹</button><button type="button" onClick={() => updateGm((next) => next.shadows.splice(index, 1))}>×</button><button type="button" onClick={() => moveShadow(index, "right")} disabled={index === c.shadows.length - 1}>›</button></div>}
                   </div>
@@ -260,16 +277,42 @@ function App() {
               {!c.roam.background && <><div className="roam-sky"><span /><span /><span /></div><div className="roam-city"><i /><i /><i /><i /><i /><i /></div><div className="roam-road" /></>}
               {isGm && <label className="background-upload"><strong>SWAP FREE ROAM IMAGE</strong><input type="file" accept="image/*" onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.roam.background = url))} /></label>}
               <div className="location-card"><span>CURRENT LOCATION</span><input disabled={!isGm} value={c.roam.location} onChange={(event) => updateGm((next) => next.roam.location = event.target.value)} /><textarea disabled={!isGm} value={c.roam.details} onChange={(event) => updateGm((next) => next.roam.details = event.target.value)} /></div>
+              <div className="roam-prompts">{c.roam.points.map((point, index) => <div key={index}><Mark>{String(index + 1).padStart(2, "0")}</Mark><span><input disabled={!isGm} value={point.title} onChange={(event) => updateGm((next) => next.roam.points[index].title = event.target.value)} /><input disabled={!isGm} value={point.detail} onChange={(event) => updateGm((next) => next.roam.points[index].detail = event.target.value)} /></span>{isGm && <button onClick={() => updateGm((next) => next.roam.points.splice(index, 1))}>×</button>}</div>)}{isGm && <button className="add-point" onClick={() => updateGm((next) => next.roam.points.push({ title: "NEW POINT", detail: "Add details" }))}>+ ADD POINT OF INTEREST</button>}</div>
             </div>}
 
             {mode === "map" && <div className={`world-map ${c.map.background ? "custom-bg" : ""}`} style={c.map.background ? { backgroundImage: `url(${c.map.background})` } : undefined}>
+              {!c.map.background && <><div className="map-water" /><div className="district north"><span>NORTH WARD</span></div><div className="district central"><span>CENTRAL</span></div><div className="district docks"><span>DOCKS</span></div><div className="district old-town"><span>OLD TOWN</span></div></>}
               {isGm && <label className="background-upload"><strong>SWAP MAP IMAGE</strong><input type="file" accept="image/*" onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.map.background = url))} /></label>}
               {isGm && <button type="button" className="clear-pins" onClick={(e) => { e.stopPropagation(); updateGm((next) => next.map.pins = []); }}>CLEAR ALL PINS</button>}
             </div>}
           </div>
           <div className="map-footer"><div><Mark>1</Mark> {isGm ? "GM EDIT MODE" : "PLAYER VIEW"}</div><div className="gm-note">SYNC: <strong>{notice || "LIVE"}</strong></div></div>
         </section>
+
+        <aside className="rules-panel">
+          <div className="rules-title"><span>QUICK</span><strong>RULES</strong><i>PTTRPG</i></div>
+          <div className="rule-card hot"><div className="rule-number">01</div><div><strong>CORE CHECK</strong><p>Roll <b>2d6 + stat</b>: 10+ complete, 7–9 mixed, 6− failure.</p></div></div>
+          <div className="rule-card"><div className="rule-number">02</div><div><strong>ATTACK</strong><p>Basic Strike uses STR/AGI. Basic Spell uses MAG. Roll damage after a hit.</p></div></div>
+          <div className="rule-card"><div className="rule-number">03</div><div><strong>AFFINITY</strong><p>Weak: +2 to hit and WP/TL damage. Resist: half damage.</p></div></div>
+          <div className="rule-card"><div className="rule-number">04</div><div><strong>ONE-MORE</strong><p>Critical or weakness + complete success Downs the target and grants another action.</p></div></div>
+          <div className="basic-moves"><span>BASIC MOVES</span><div>STRIKE</div><div>SPELL</div><div>DEFEND</div><div>ASSIST</div><div>ITEM</div><div>FLEE</div></div>
+          <div className="status-box"><span className="eyebrow">GENERAL PLAY</span><p><b>Initiative:</b> 2d6 + AGI/TL</p><p><b>Critical:</b> natural 11–12</p><p><b>Reaction:</b> one per round</p><p><b>Baton Pass:</b> pass a One-More to an ally</p></div>
+        </aside>
       </div>
+
+      <footer className="party-bar">
+        <div className="party-label"><span>ACTIVE</span><strong>CREW</strong><i>{String(c.players.length).padStart(2, "0")} PCS</i>{isGm && <button onClick={async () => setCampaign((await addPlayer()).campaign)}>+ ADD PC</button>}</div>
+        <div className="party-members">{c.players.map((player, index) => <div className={`hero-card ${index % 2 ? "white" : "mint"}`} key={player.id}>
+          <div className="hero-name"><span>{String(index + 1).padStart(2, "0")}</span><input disabled={!isGm} value={player.name} onChange={(event) => updatePlayerLocal(player.id, { name: event.target.value })} onBlur={(event) => persistPlayer(player.id, { name: event.target.value })} /><input disabled={!isGm} value={player.role} onChange={(event) => updatePlayerLocal(player.id, { role: event.target.value })} onBlur={(event) => persistPlayer(player.id, { role: event.target.value })} /></div>
+          <div className="art-pair">
+            <label className={`portrait ${player.art ? "has-art" : ""}`}>{player.art ? <img src={player.art} alt="" /> : <span>{player.initial}</span>}<small>CHARACTER</small><input type="file" accept="image/*" onChange={(event) => upload(event, "player", async (url) => setCampaign((await patchPlayer(player.id, { art: url })).campaign))} /></label>
+            <label className={`portrait persona-art ${player.personaArt ? "has-art" : ""}`}>{player.personaArt ? <img src={player.personaArt} alt="" /> : <span>P</span>}<small>PERSONA</small><input type="file" accept="image/*" onChange={(event) => upload(event, "player", async (url) => setCampaign((await patchPlayer(player.id, { personaArt: url })).campaign))} /></label>
+          </div>
+          <div className="meters">{(["hp", "sp"] as const).map((resource) => <label className={`number-resource ${resource}`} key={resource}><span>{resource.toUpperCase()}</span><input type="number" min="0" value={player[resource]} onChange={(event) => updatePlayerLocal(player.id, { [resource]: Number(event.target.value) })} onBlur={(event) => persistPlayer(player.id, { [resource]: Number(event.target.value) })} /></label>)}</div>
+          {isGm && <button className="remove-player" onClick={async () => setCampaign((await removePlayer(player.id)).campaign)}>REMOVE</button>}
+        </div>)}</div>
+        <div className="phase"><span>ACCESS</span><strong>{role.toUpperCase()}</strong><small>GLOBAL</small></div>
+      </footer>
     </main>
   );
 }
