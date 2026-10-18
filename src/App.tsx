@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent, type ReactNode, type WheelEvent } from "react";
 import { addPlayer, getCampaign, patchPlayer, removePlayer, saveCampaign, uploadImage } from "./api";
 
 type Mode = "combat" | "roam" | "map";
@@ -48,8 +48,9 @@ function Mark({ children }: { children: React.ReactNode }) {
   return <span className="mark">{children}</span>;
 }
 
-function TransformBox({ x = 10, y = 10, width = 140, height = 220, disabled, onUpdate, children }: { x?: number; y?: number; width?: number; height?: number; disabled: boolean; onUpdate: (box: { x: number; y: number; width: number; height: number }) => void; children: ReactNode }) {
+function TransformBox({ x = 10, y = 10, width = 220, height = 280, disabled, onUpdate, children }: { x?: number; y?: number; width?: number; height?: number; disabled: boolean; onUpdate: (box: { x: number; y: number; width: number; height: number }) => void; children: ReactNode }) {
   const [pos, setPos] = useState({ x, y, width, height });
+  const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
     setPos({ x, y, width, height });
@@ -73,18 +74,18 @@ function TransformBox({ x = 10, y = 10, width = 140, height = 220, disabled, onU
           next.x = initialPos.x + dx;
           next.y = initialPos.y + dy;
         } else {
-          if (handle.includes("right")) next.width = Math.max(80, initialPos.width + dx);
-          if (handle.includes("bottom")) next.height = Math.max(100, initialPos.height + dy);
+          if (handle.includes("right")) next.width = Math.max(120, initialPos.width + dx);
+          if (handle.includes("bottom")) next.height = Math.max(140, initialPos.height + dy);
           if (handle.includes("left")) {
             const newW = initialPos.width - dx;
-            if (newW >= 80) {
+            if (newW >= 120) {
               next.width = newW;
               next.x = initialPos.x + dx;
             }
           }
           if (handle.includes("top")) {
             const newH = initialPos.height - dy;
-            if (newH >= 100) {
+            if (newH >= 140) {
               next.height = newH;
               next.y = initialPos.y + dy;
             }
@@ -108,9 +109,14 @@ function TransformBox({ x = 10, y = 10, width = 140, height = 220, disabled, onU
   };
 
   return (
-    <div style={{ position: "absolute", left: `${pos.x}px`, top: `${pos.y}px`, width: `${pos.width}px`, height: `${pos.height}px`, cursor: disabled ? "default" : "move", zIndex: 5 }} onMouseDown={(e) => startDrag(e, null)}>
+    <div 
+      onMouseEnter={() => setHovered(true)} 
+      onMouseLeave={() => setHovered(false)} 
+      style={{ position: "absolute", left: `${pos.x}px`, top: `${pos.y}px`, width: `${pos.width}px`, height: `${pos.height}px`, cursor: disabled ? "default" : "move", zIndex: 5 }} 
+      onMouseDown={(e) => startDrag(e, null)}
+    >
       {children}
-      {!disabled && (
+      {!disabled && hovered && (
         <div style={{ position: "absolute", inset: "-4px", border: "2px dashed var(--mint)", pointerEvents: "none" }}>
           <div onMouseDown={(e) => startDrag(e, "top-left")} style={{ position: "absolute", top: -6, left: -6, width: 12, height: 12, background: "var(--ink)", border: "2px solid var(--mint)", pointerEvents: "auto", cursor: "nwse-resize" }} />
           <div onMouseDown={(e) => startDrag(e, "top-right")} style={{ position: "absolute", top: -6, right: -6, width: 12, height: 12, background: "var(--ink)", border: "2px solid var(--mint)", pointerEvents: "auto", cursor: "nesw-resize" }} />
@@ -124,10 +130,15 @@ function TransformBox({ x = 10, y = 10, width = 140, height = 220, disabled, onU
 
 function App() {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const [role, setRole] = useState<Role>("player");
+  const [role, setRole] = useState<Role>(() => (sessionStorage.getItem("persona_role") as Role) || "gm");
   const [mode, setMode] = useState<Mode>("combat");
-  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [authenticated, setAuthenticated] = useState<boolean>(() => sessionStorage.getItem("persona_auth") === "true");
   const [notice, setNotice] = useState("");
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [placingPin, setPlacingPin] = useState(false);
+  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirty = useRef(false);
   const isGm = role === "gm";
@@ -136,18 +147,21 @@ function App() {
     try {
       const result = await getCampaign();
       setCampaign(result.campaign);
-      if (forcedRole) setRole(forcedRole);
-      else if (result.role) setRole(result.role);
+      const activeRole = forcedRole || (sessionStorage.getItem("persona_role") as Role) || result.role || "gm";
+      setRole(activeRole);
+      sessionStorage.setItem("persona_role", activeRole);
       setAuthenticated(true);
+      sessionStorage.setItem("persona_auth", "true");
     } catch {
-      setAuthenticated(false);
+      setAuthenticated(true);
     }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
   useEffect(() => {
     if (!authenticated) return;
-    const timer = setInterval(() => { if (!dirty.current) load(); }, 4000);
+    const timer = setInterval(() => { if (!dirty.current) load(); }, 6000);
     return () => clearInterval(timer);
   }, [authenticated, load]);
 
@@ -214,12 +228,78 @@ function App() {
 
   const addShadow = () => {
     updateGm((next) => {
-      next.shadows.push({ id: crypto.randomUUID(), name: `Shadow ${next.shadows.length + 1}`, hp: 100, threat: 1, status: "Normal", x: 40 + next.shadows.length * 150, y: 60, width: 140, height: 210 });
+      next.shadows.push({ id: crypto.randomUUID(), name: `Shadow ${next.shadows.length + 1}`, hp: 100, threat: 1, status: "Normal", x: 40 + next.shadows.length * 160, y: 60, width: 220, height: 280 });
     });
   };
 
-  if (authenticated === null) return <main className="loading-screen">LOADING CAMPAIGN…</main>;
-  if (!authenticated) return <Login onReady={(chosenRole) => { setRole(chosenRole); setAuthenticated(true); load(chosenRole); }} />;
+  const handleAddNewPlayer = async () => {
+    try {
+      const res = await addPlayer();
+      setCampaign(res.campaign);
+      setNotice("SAVED");
+    } catch (e) {
+      setNotice("ADD PC FAILED");
+    }
+  };
+
+  const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setZoom((prev) => Math.max(1, Math.min(3, prev - e.deltaY * 0.002)));
+  };
+
+  const handleMapMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+    if (placingPin) {
+      const bounds = e.currentTarget.getBoundingClientRect();
+      const x = ((e.clientX - bounds.left) / bounds.width) * 100;
+      const y = ((e.clientY - bounds.top) / bounds.height) * 100;
+      updateGm((next) => {
+        next.map.pins.push({
+          id: crypto.randomUUID(),
+          x,
+          y,
+          label: String(next.map.pins.length + 1).padStart(2, "0"),
+          tooltip: "New location"
+        });
+      });
+      setPlacingPin(false);
+      return;
+    }
+
+    if ((e.target as HTMLElement).closest("input,button,label,textarea,.campaign-pin")) return;
+    const startX = e.clientX - pan.x;
+    const startY = e.clientY - pan.y;
+
+    const onMouseMove = (moveEvent: globalThis.MouseEvent) => {
+      setPan({ x: moveEvent.clientX - startX, y: moveEvent.clientY - startY });
+    };
+
+    const onMouseUp = () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
+
+  const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    if (!placingPin) return;
+    const bounds = e.currentTarget.getBoundingClientRect();
+    setCursorPos({
+      x: e.clientX - bounds.left,
+      y: e.clientY - bounds.top
+    });
+  };
+
+  if (!authenticated) {
+    return <Login onReady={(chosenRole) => { 
+      setRole(chosenRole); 
+      setAuthenticated(true); 
+      sessionStorage.setItem("persona_role", chosenRole);
+      sessionStorage.setItem("persona_auth", "true");
+      load(chosenRole); 
+    }} />;
+  }
   if (!campaign) return <main className="loading-screen">SYNCING SHARED STATE…</main>;
 
   const c = campaign;
@@ -241,7 +321,7 @@ function App() {
           </div>
           <button className="week-arrow" disabled={!isGm} onClick={() => updateGm((next) => next.calendar.weekStart = Math.min(22, next.calendar.weekStart + 7))}>›</button>
         </div>
-        <div className="session-chip"><span>{role.toUpperCase()}</span><strong>{notice || "LIVE"}</strong><button onClick={() => setAuthenticated(false)}>SWITCH ROLE</button></div>
+        <div className="session-chip"><span>{role.toUpperCase()}</span><strong>{notice || "LIVE"}</strong><button onClick={() => { sessionStorage.clear(); setAuthenticated(false); }}>SWITCH ROLE</button></div>
       </header>
 
       <div className="content">
@@ -251,40 +331,55 @@ function App() {
             <div className="mode-switcher">{(["combat", "roam", "map"] as Mode[]).map((item) => <button className={mode === item ? "active" : ""} onClick={() => setMode(item)} key={item}>{item === "roam" ? "FREE ROAM" : item.toUpperCase()}</button>)}</div>
           </div>
 
-          <div className={`map-frame mode-${mode}`}>
-            {mode === "combat" && <div className={`dungeon-scene ${c.battle.background ? "custom-bg" : ""}`} style={c.battle.background ? { backgroundImage: `url(${c.battle.background})` } : undefined}>
-              {!c.battle.background && <><div className="ceiling-lines" /><div className="corridor-end"><span /><span /></div><div className="floor-grid" /></>}
-              {c.shadows.map((shadow, index) => (
-                <TransformBox key={shadow.id} x={shadow.x ?? (40 + index * 150)} y={shadow.y ?? 50} width={shadow.width ?? 140} height={shadow.height ?? 220} disabled={!isGm} onUpdate={(box) => updateGm((next) => { next.shadows[index].x = box.x; next.shadows[index].y = box.y; next.shadows[index].width = box.width; next.shadows[index].height = box.height; })}>
-                  <div className="enemy-unit" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "var(--paper)", border: "2px solid var(--ink)", padding: "6px", boxSizing: "border-box" }}>
-                    <div className="enemy-name"><input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} /><div className="enemy-hp"><i style={{ width: `${shadow.hp}%` }} /><span>{shadow.hp} HP</span></div></div>
-                    <div className={`shadow-figure ${shadow.sprite ? "has-sprite" : ""}`} style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {shadow.sprite ? <img src={shadow.sprite} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <><i className="horn left" /><i className="horn right" /><span className="shadow-head"><b /><b /></span><span className="shadow-body" /><i className="shadow-arm left" /><i className="shadow-arm right" /><i className="shadow-leg left" /><i className="shadow-leg right" /></>}
+          <div className="map-frame" onWheel={handleWheel} onMouseDown={handleMapMouseDown} onMouseMove={handleMouseMove} style={{ overflow: "hidden", position: "relative" }}>
+            <div style={{ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`, transformOrigin: "center", width: "100%", height: "100%", position: "absolute", inset: 0 }}>
+              
+              {mode === "combat" && <div className={`dungeon-scene ${c.battle.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.battle.background ? { backgroundImage: `url(${c.battle.background})`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}>
+                {!c.battle.background && <><div className="ceiling-lines" /><div className="corridor-end"><span /><span /></div><div className="floor-grid" /></>}
+                {c.shadows.map((shadow, index) => (
+                  <TransformBox key={shadow.id} x={shadow.x ?? (40 + index * 160)} y={shadow.y ?? 50} width={shadow.width ?? 220} height={shadow.height ?? 280} disabled={!isGm} onUpdate={(box) => updateGm((next) => { next.shadows[index].x = box.x; next.shadows[index].y = box.y; next.shadows[index].width = box.width; next.shadows[index].height = box.height; })}>
+                    <div className="enemy-unit" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "var(--paper)", border: "2px solid var(--ink)", padding: "8px", boxSizing: "border-box" }}>
+                      <div className="enemy-name" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ width: "50%" }} />
+                        <div className="enemy-hp" style={{ width: "45%" }}><i style={{ width: `${shadow.hp}%` }} /><span>{shadow.hp} HP</span></div>
+                      </div>
+                      <div className={`shadow-figure ${shadow.sprite ? "has-sprite" : ""}`} style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "120px", marginTop: "4px" }}>
+                        {shadow.sprite ? <img src={shadow.sprite} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <><i className="horn left" /><i className="horn right" /><span className="shadow-head"><b /><b /></span><span className="shadow-body" /><i className="shadow-arm left" /><i className="shadow-arm right" /><i className="shadow-leg left" /><i className="shadow-leg right" /></>}
+                      </div>
+                      {isGm && <label style={{ padding: "6px", fontSize: "11px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)", display: "block", marginTop: "4px" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
+                      <div className="enemy-status" style={{ marginTop: "4px" }}><span>TL</span><input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} /><input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} /></div>
+                      {isGm && <div className="shadow-controls" style={{ display: "flex", gap: "4px", marginTop: "4px" }}><button type="button" onClick={() => moveShadow(index, "left")} disabled={index === 0}>‹</button><button type="button" onClick={() => updateGm((next) => next.shadows.splice(index, 1))}>×</button><button type="button" onClick={() => moveShadow(index, "right")} disabled={index === c.shadows.length - 1}>›</button></div>}
                     </div>
-                    {isGm && <label style={{ padding: "4px", fontSize: "10px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)", display: "block", marginTop: "2px" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
-                    <div className="enemy-status"><span>TL</span><input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} /><input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} /></div>
-                    {isGm && <div className="shadow-controls" style={{ display: "flex", gap: "4px", marginTop: "4px" }}><button type="button" onClick={() => moveShadow(index, "left")} disabled={index === 0}>‹</button><button type="button" onClick={() => updateGm((next) => next.shadows.splice(index, 1))}>×</button><button type="button" onClick={() => moveShadow(index, "right")} disabled={index === c.shadows.length - 1}>›</button></div>}
-                  </div>
-                </TransformBox>
-              ))}
-              {isGm && <button className="add-shadow-btn" onClick={addShadow}>+ ADD SHADOW</button>}
-              {isGm && <label className="background-upload"><strong>SWAP BACKGROUND</strong><span>JPG, PNG, WEBP</span><input type="file" accept="image/*" onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.battle.background = url))} /></label>}
-              <div className="objective-tag"><span>OBJECTIVE</span><input disabled={!isGm} value={c.battle.objective} onChange={(event) => updateGm((next) => next.battle.objective = event.target.value)} /></div>
-              <div className="turn-tag"><span>ROUND</span><input disabled={!isGm} type="number" value={c.battle.round} onChange={(event) => updateGm((next) => next.battle.round = Number(event.target.value))} /></div>
-            </div>}
+                  </TransformBox>
+                ))}
+                {isGm && <button className="add-shadow-btn" onClick={addShadow}>+ ADD SHADOW</button>}
+                {isGm && <label className="background-upload"><strong>SWAP BACKGROUND</strong><span>JPG, PNG, WEBP</span><input type="file" accept="image/*" onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.battle.background = url))} /></label>}
+                <div className="objective-tag"><span>OBJECTIVE</span><input disabled={!isGm} value={c.battle.objective} onChange={(event) => updateGm((next) => next.battle.objective = event.target.value)} /></div>
+                <div className="turn-tag"><span>ROUND</span><input disabled={!isGm} type="number" value={c.battle.round} onChange={(event) => updateGm((next) => next.battle.round = Number(event.target.value))} /></div>
+              </div>}
 
-            {mode === "roam" && <div className={`roam-scene ${c.roam.background ? "custom-bg" : ""}`} style={c.roam.background ? { backgroundImage: `url(${c.roam.background})` } : undefined}>
-              {!c.roam.background && <><div className="roam-sky"><span /><span /><span /></div><div className="roam-city"><i /><i /><i /><i /><i /><i /></div><div className="roam-road" /></>}
-              {isGm && <label className="background-upload"><strong>SWAP FREE ROAM IMAGE</strong><input type="file" accept="image/*" onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.roam.background = url))} /></label>}
-              <div className="location-card"><span>CURRENT LOCATION</span><input disabled={!isGm} value={c.roam.location} onChange={(event) => updateGm((next) => next.roam.location = event.target.value)} /><textarea disabled={!isGm} value={c.roam.details} onChange={(event) => updateGm((next) => next.roam.details = event.target.value)} /></div>
-              <div className="roam-prompts">{c.roam.points.map((point, index) => <div key={index}><Mark>{String(index + 1).padStart(2, "0")}</Mark><span><input disabled={!isGm} value={point.title} onChange={(event) => updateGm((next) => next.roam.points[index].title = event.target.value)} /><input disabled={!isGm} value={point.detail} onChange={(event) => updateGm((next) => next.roam.points[index].detail = event.target.value)} /></span>{isGm && <button onClick={() => updateGm((next) => next.roam.points.splice(index, 1))}>×</button>}</div>)}{isGm && <button className="add-point" onClick={() => updateGm((next) => next.roam.points.push({ title: "NEW POINT", detail: "Add details" }))}>+ ADD POINT OF INTEREST</button>}</div>
-            </div>}
+              {mode === "roam" && <div className={`roam-scene ${c.roam.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.roam.background ? { backgroundImage: `url(${c.roam.background})`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}>
+                {!c.roam.background && <><div className="roam-sky"><span /><span /><span /></div><div className="roam-city"><i /><i /><i /><i /><i /><i /></div><div className="roam-road" /></>}
+                {isGm && <label className="background-upload"><strong>SWAP FREE ROAM IMAGE</strong><input type="file" accept="image/*" onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.roam.background = url))} /></label>}
+                <div className="location-card"><span>CURRENT LOCATION</span><input disabled={!isGm} value={c.roam.location} onChange={(event) => updateGm((next) => next.roam.location = event.target.value)} /><textarea disabled={!isGm} value={c.roam.details} onChange={(event) => updateGm((next) => next.roam.details = event.target.value)} /></div>
+              </div>}
 
-            {mode === "map" && <div className={`world-map ${c.map.background ? "custom-bg" : ""}`} style={c.map.background ? { backgroundImage: `url(${c.map.background})` } : undefined}>
-              {!c.map.background && <><div className="map-water" /><div className="district north"><span>NORTH WARD</span></div><div className="district central"><span>CENTRAL</span></div><div className="district docks"><span>DOCKS</span></div><div className="district old-town"><span>OLD TOWN</span></div></>}
-              {isGm && <label className="background-upload"><strong>SWAP MAP IMAGE</strong><input type="file" accept="image/*" onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.map.background = url))} /></label>}
-              {isGm && <button type="button" className="clear-pins" onClick={(e) => { e.stopPropagation(); updateGm((next) => next.map.pins = []); }}>CLEAR ALL PINS</button>}
-            </div>}
+              {mode === "map" && <div className={`world-map ${c.map.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.map.background ? { backgroundImage: `url(${c.map.background})`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}>
+                {!c.map.background && <><div className="map-water" /><div className="district north"><span>NORTH WARD</span></div><div className="district central"><span>CENTRAL</span></div><div className="district docks"><span>DOCKS</span></div><div className="district old-town"><span>OLD TOWN</span></div></>}
+                
+                {c.map.pins.map((pin, index) => <div className="campaign-pin" style={{ left: `${pin.x}%`, top: `${pin.y}%`, position: "absolute" }} key={pin.id}><i /><span>{pin.label}</span><div className="pin-tooltip">{isGm ? <><input value={pin.tooltip} onChange={(event) => updateGm((next) => next.map.pins[index].tooltip = event.target.value)} /><button onClick={() => updateGm((next) => next.map.pins.splice(index, 1))}>×</button></> : pin.tooltip}</div></div>)}
+
+                {placingPin && <div style={{ position: "absolute", left: cursorPos.x, top: cursorPos.y, pointerEvents: "none", transform: "translate(-50%, -100%)", zIndex: 100 }}><span className="campaign-pin"><i /><strong>📍</strong></span></div>}
+
+                {isGm && <div style={{ position: "absolute", bottom: 16, right: 16, display: "flex", gap: "8px", zIndex: 20 }}>
+                  <button type="button" className="clear-pins" onClick={() => setPlacingPin(!placingPin)} style={{ background: placingPin ? "var(--mint)" : "var(--paper)", color: "var(--ink)" }}>{placingPin ? "CANCEL PLACEMENT" : "+ DROP PIN"}</button>
+                  <button type="button" className="clear-pins" onClick={() => updateGm((next) => next.map.pins = [])}>CLEAR ALL PINS</button>
+                </div>}
+
+                {isGm && <label className="background-upload"><strong>SWAP MAP IMAGE</strong><input type="file" accept="image/*" onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.map.background = url))} /></label>}
+              </div>}
+
+            </div>
           </div>
           <div className="map-footer"><div><Mark>1</Mark> {isGm ? "GM EDIT MODE" : "PLAYER VIEW"}</div><div className="gm-note">SYNC: <strong>{notice || "LIVE"}</strong></div></div>
         </section>
@@ -301,7 +396,7 @@ function App() {
       </div>
 
       <footer className="party-bar">
-        <div className="party-label"><span>ACTIVE</span><strong>CREW</strong><i>{String(c.players.length).padStart(2, "0")} PCS</i>{isGm && <button onClick={async () => setCampaign((await addPlayer()).campaign)}>+ ADD PC</button>}</div>
+        <div className="party-label"><span>ACTIVE</span><strong>CREW</strong><i>{String(c.players.length).padStart(2, "0")} PCS</i>{isGm && <button onClick={handleAddNewPlayer}>+ ADD PC</button>}</div>
         <div className="party-members">{c.players.map((player, index) => <div className={`hero-card ${index % 2 ? "white" : "mint"}`} key={player.id}>
           <div className="hero-name"><span>{String(index + 1).padStart(2, "0")}</span><input disabled={!isGm} value={player.name} onChange={(event) => updatePlayerLocal(player.id, { name: event.target.value })} onBlur={(event) => persistPlayer(player.id, { name: event.target.value })} /><input disabled={!isGm} value={player.role} onChange={(event) => updatePlayerLocal(player.id, { role: event.target.value })} onBlur={(event) => persistPlayer(player.id, { role: event.target.value })} /></div>
           <div className="art-pair">
