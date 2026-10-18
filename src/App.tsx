@@ -23,13 +23,12 @@ const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "
 const seasons = ["WINTER", "SPRING", "SUMMER", "FALL"];
 
 const PIN_ICONS = [
-  { name: "House", url: "https://game-icons.net/icons/ffffff/transparent/1x1/delapouite/wooden-cabin.svg" },
+  { name: "Home", url: "https://game-icons.net/icons/ffffff/transparent/1x1/delapouite/house.svg" },
   { name: "Shop", url: "https://game-icons.net/icons/ffffff/transparent/1x1/delapouite/shop.svg" },
-  { name: "General Pin", url: "https://game-icons.net/icons/ffffff/transparent/1x1/delapouite/position-marker.svg" },
-  { name: "Point of Interest", url: "https://game-icons.net/icons/ffffff/transparent/1x1/lorc/telescope.svg" },
-  { name: "Dangerous Area", url: "https://game-icons.net/icons/ffffff/transparent/1x1/lorc/biohazard.svg" },
-  { name: "Portal", url: "https://game-icons.net/icons/ffffff/transparent/1x1/lorc/portal.svg" },
-  { name: "Unknown Area", url: "https://game-icons.net/icons/ffffff/transparent/1x1/lorc/help.svg" },
+  { name: "Point of Interest", url: "https://game-icons.net/icons/ffffff/transparent/1x1/delapouite/position-marker.svg" },
+  { name: "Danger", url: "https://game-icons.net/icons/ffffff/transparent/1x1/lorc/hazard-sign.svg" },
+  { name: "Portal", url: "https://game-icons.net/icons/ffffff/transparent/1x1/lorc/waves.svg" },
+  { name: "Unknown", url: "https://game-icons.net/icons/ffffff/transparent/1x1/lorc/uncertainty.svg" },
 ];
 
 function StepControl({ label, value, disabled, previous, next }: { label: string; value: string; disabled: boolean; previous: () => void; next: () => void }) {
@@ -320,8 +319,8 @@ export default function App() {
 
   const addShadow = () => {
     updateGm((next) => {
-      const offset = (next.shadows.length % 4) * 300 + 30;
-      const rowOffset = Math.floor(next.shadows.length / 4) * 40;
+      const offset = (next.shadows.length % 3) * 300 + 30;
+      const rowOffset = Math.floor(next.shadows.length / 3) * 40;
       next.shadows.push({ 
         id: crypto.randomUUID(), 
         name: `SHADOW ${next.shadows.length + 1}`, 
@@ -330,7 +329,7 @@ export default function App() {
         threat: 1, 
         status: "Normal", 
         x: offset, 
-        y: 30 + rowOffset 
+        y: 20 + rowOffset 
       });
     });
     addToast("SHADOW ADDED", "success");
@@ -490,10 +489,16 @@ export default function App() {
             <div style={{ transform: mode === "map" ? `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)` : "none", transformOrigin: "center", width: "100%", height: "100%", position: "absolute", inset: 0 }}>
               
               {/* COMBAT MODE */}
-              {mode === "combat" && <div className={`dungeon-scene ${c.battle.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.battle.background ? { backgroundImage: `url(${c.battle.background})`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}>
+              {mode === "combat" && <div className={`dungeon-scene ${c.battle.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden", ...(c.battle.background ? { backgroundImage: `url(${c.battle.background})`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}>
                 {!c.battle.background && <><div className="ceiling-lines" /><div className="corridor-end"><span /><span /></div><div className="floor-grid" /></>}
                 {c.shadows.map((shadow, index) => (
-                  <DraggableShadowBox key={shadow.id} x={shadow.x ?? (30 + (index % 4) * 300)} y={shadow.y ?? (30 + Math.floor(index / 4) * 40)} disabled={!isGm} onUpdate={(p) => updateGm((next) => { next.shadows[index].x = p.x; next.shadows[index].y = p.y; })}>
+                  <DraggableShadowBox 
+                    key={shadow.id} 
+                    x={Math.min(window.innerWidth - 310, Math.max(10, shadow.x ?? (20 + (index % 3) * 280)))} 
+                    y={Math.min(450, Math.max(10, shadow.y ?? (20 + Math.floor(index / 3) * 30)))} 
+                    disabled={!isGm} 
+                    onUpdate={(p) => updateGm((next) => { next.shadows[index].x = p.x; next.shadows[index].y = p.y; })}
+                  >
                     <div style={{ width: "100%", background: "var(--paper)", border: "3px solid var(--ink)", padding: "10px", boxShadow: "4px 4px 0 var(--ink)", display: "flex", flexDirection: "column", gap: "8px" }}>
                       
                       {isGm && (
@@ -510,7 +515,6 @@ export default function App() {
                         <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ flex: 1, background: "#fff", border: "2px solid var(--ink)", padding: "4px 8px", fontWeight: "900", fontFamily: "Bebas Neue", fontSize: "18px", color: "#000" }} />
                       </div>
 
-                      {/* Fixed HP Inputs with dark text */}
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#eee", border: "2px solid var(--ink)", padding: "4px 8px" }}>
                         <span style={{ fontFamily: "Bebas Neue", fontSize: "14px", fontWeight: "bold", color: "#000" }}>HP:</span>
                         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
@@ -520,7 +524,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      <div style={{ width: "100%", height: "180px", background: "#111", border: "2px solid var(--ink)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                      <div style={{ width: "100%", height: "140px", background: "#111", border: "2px solid var(--ink)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
                         {shadow.sprite ? (
                           <img src={shadow.sprite} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                         ) : (
@@ -535,7 +539,6 @@ export default function App() {
                         </label>
                       )}
 
-                      {/* Fixed TL & Status inputs with dark text */}
                       <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                         <span style={{ fontFamily: "Bebas Neue", fontSize: "14px", color: "#000" }}>TL</span>
                         <input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} style={{ width: "45px", textAlign: "center", border: "2px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold" }} />
@@ -613,7 +616,7 @@ export default function App() {
                     onMouseLeave={() => setHoveredPinId(null)}
                   >
                     <div style={{ display: "flex", alignItems: "center", background: "#000", color: "#fff", border: "2px solid var(--mint)", padding: "4px 8px", gap: "6px", boxShadow: "3px 3px 0 var(--mint)", cursor: "pointer" }}>
-                      <img src={pin.iconUrl || PIN_ICONS[2].url} alt="" style={{ width: "20px", height: "20px", filter: "invert(1)" }} />
+                      <img src={pin.iconUrl || PIN_ICONS[2].url} alt="" style={{ width: "20px", height: "20px", filter: "invert(1) brightness(2)" }} />
                       <input 
                         disabled={!isGm}
                         value={pin.label} 
@@ -648,7 +651,7 @@ export default function App() {
                 {placingPin && (
                   <div style={{ position: "absolute", left: cursorPos.x, top: cursorPos.y, pointerEvents: "none", transform: "translate(-50%, -100%)", zIndex: 100 }}>
                     <div style={{ background: "#000", color: "#fff", padding: "6px 12px", border: "3px solid var(--mint)", display: "flex", alignItems: "center", gap: "8px", boxShadow: "4px 4px 0 var(--mint)" }}>
-                      <img src={selectedPinIconUrl} alt="" style={{ width: "20px", height: "20px", filter: "invert(1)" }} />
+                      <img src={selectedPinIconUrl} alt="" style={{ width: "20px", height: "20px", filter: "invert(1) brightness(2)" }} />
                       <strong style={{ fontFamily: "Bebas Neue, sans-serif", color: "var(--mint)" }}>CLICK TO PLACE</strong>
                     </div>
                   </div>
@@ -659,8 +662,8 @@ export default function App() {
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", maxWidth: "340px" }}>
                       <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "14px", color: "var(--mint)" }}>CHOOSE ICON:</span>
                       {PIN_ICONS.map((ic) => (
-                        <button key={ic.url} title={ic.name} onClick={() => setSelectedPinIconUrl(ic.url)} style={{ background: selectedPinIconUrl === ic.url ? "var(--mint)" : "#222", border: "2px solid var(--mint)", cursor: "pointer", padding: "5px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <img src={ic.url} alt={ic.name} style={{ width: "18px", height: "18px", filter: selectedPinIconUrl === ic.url ? "invert(0)" : "invert(1)" }} />
+                        <button key={ic.url} title={ic.name} onClick={() => setSelectedPinIconUrl(ic.url)} style={{ background: selectedPinIconUrl === ic.url ? "var(--mint)" : "#333", border: "2px solid var(--mint)", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <img src={ic.url} alt={ic.name} style={{ width: "20px", height: "20px", filter: selectedPinIconUrl === ic.url ? "invert(0)" : "invert(1) brightness(2)" }} />
                         </button>
                       ))}
                     </div>
