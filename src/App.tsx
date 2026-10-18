@@ -134,7 +134,7 @@ function ImageCropperModal({ imageSrc, onCancel, onCropComplete }: { imageSrc: s
   );
 }
 
-function DraggableShadowBox({ x = 30, y = 30, disabled, onUpdate, children }: { x?: number; y?: number; disabled: boolean; onUpdate: (pos: { x: number; y: number }) => void; children: ReactNode }) {
+function DraggableShadowBox({ x = 20, y = 20, disabled, onUpdate, children }: { x?: number; y?: number; disabled: boolean; onUpdate: (pos: { x: number; y: number }) => void; children: ReactNode }) {
   const [pos, setPos] = useState({ x, y });
 
   useEffect(() => {
@@ -174,7 +174,7 @@ function DraggableShadowBox({ x = 30, y = 30, disabled, onUpdate, children }: { 
         position: "absolute", 
         left: `${pos.x}px`, 
         top: `${pos.y}px`, 
-        width: "280px",
+        width: "270px",
         cursor: disabled ? "default" : "move", 
         zIndex: 10,
         filter: "drop-shadow(6px 6px 0px var(--ink))"
@@ -188,9 +188,9 @@ function DraggableShadowBox({ x = 30, y = 30, disabled, onUpdate, children }: { 
 
 export default function App() {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const [role, setRole] = useState<Role>("gm");
+  const [role, setRole] = useState<Role>(() => (sessionStorage.getItem("persona_role") as Role) || "gm");
   const [mode, setMode] = useState<Mode>("combat");
-  const [authenticated, setAuthenticated] = useState<boolean>(false);
+  const [authenticated, setAuthenticated] = useState<boolean>(() => sessionStorage.getItem("persona_auth") === "true");
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -217,16 +217,15 @@ export default function App() {
     try {
       const result = await getCampaign();
       setCampaign(result.campaign);
-      const activeRole = forcedRole || (sessionStorage.getItem("persona_role") as Role) || result.role || "gm";
+      const activeRole = forcedRole || role;
       setRole(activeRole);
       sessionStorage.setItem("persona_role", activeRole);
       setAuthenticated(true);
       sessionStorage.setItem("persona_auth", "true");
     } catch {
-      // Fallback if backend fetch fails initially
       setAuthenticated(true);
     }
-  }, []);
+  }, [role]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -321,8 +320,8 @@ export default function App() {
   const addShadow = () => {
     updateGm((next) => {
       if (!next.shadows) next.shadows = [];
-      const offset = (next.shadows.length % 3) * 300 + 30;
-      const rowOffset = Math.floor(next.shadows.length / 3) * 40;
+      const offset = (next.shadows.length % 3) * 290 + 20;
+      const rowOffset = Math.floor(next.shadows.length / 3) * 30;
       next.shadows.push({ 
         id: crypto.randomUUID(), 
         name: `SHADOW ${next.shadows.length + 1}`, 
@@ -418,6 +417,13 @@ export default function App() {
     });
   };
 
+  const toggleRole = () => {
+    const nextRole = role === "gm" ? "player" : "gm";
+    setRole(nextRole);
+    sessionStorage.setItem("persona_role", nextRole);
+    addToast(`SWITCHED TO ${nextRole.toUpperCase()} MODE`, "info");
+  };
+
   if (!authenticated || !campaign) return <main className="loading-screen">SYNCING SHARED STATE…</main>;
 
   const c = campaign;
@@ -481,13 +487,7 @@ export default function App() {
         <div className="session-chip">
           <span>{role.toUpperCase()}</span>
           <strong>LIVE</strong>
-          <button onClick={() => { 
-            sessionStorage.removeItem("persona_auth");
-            sessionStorage.removeItem("persona_role");
-            setAuthenticated(false);
-            setCampaign(null);
-            load();
-          }}>SWITCH ROLE</button>
+          <button onClick={toggleRole}>SWITCH ROLE</button>
         </div>
       </header>
 
@@ -507,15 +507,15 @@ export default function App() {
                 {c.shadows.map((shadow, index) => (
                   <DraggableShadowBox 
                     key={shadow.id} 
-                    x={Math.min(window.innerWidth - 310, Math.max(10, shadow.x ?? (20 + (index % 3) * 280)))} 
-                    y={Math.min(450, Math.max(10, shadow.y ?? (20 + Math.floor(index / 3) * 30)))} 
+                    x={Math.min(window.innerWidth - 300, Math.max(10, shadow.x ?? (20 + (index % 3) * 280)))} 
+                    y={Math.min(380, Math.max(10, shadow.y ?? (20 + Math.floor(index / 3) * 20)))} 
                     disabled={!isGm} 
                     onUpdate={(p) => updateGm((next) => { next.shadows[index].x = p.x; next.shadows[index].y = p.y; })}
                   >
-                    <div style={{ width: "100%", background: "var(--paper)", border: "3px solid var(--ink)", padding: "10px", boxShadow: "4px 4px 0 var(--ink)", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div style={{ width: "100%", background: "var(--paper)", border: "3px solid var(--ink)", padding: "8px", boxShadow: "4px 4px 0 var(--ink)", display: "flex", flexDirection: "column", gap: "6px" }}>
                       
                       {isGm && (
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid var(--ink)", paddingBottom: "4px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid var(--ink)", paddingBottom: "2px" }}>
                           <div style={{ display: "flex", gap: "4px" }}>
                             <button type="button" onClick={() => moveShadow(index, "left")} disabled={index === 0} style={{ padding: "2px 6px", background: "var(--ink)", color: "#fff", border: "0", fontFamily: "Bebas Neue", cursor: "pointer" }}>‹</button>
                             <button type="button" onClick={() => moveShadow(index, "right")} disabled={index === c.shadows.length - 1} style={{ padding: "2px 6px", background: "var(--ink)", color: "#fff", border: "0", fontFamily: "Bebas Neue", cursor: "pointer" }}>›</button>
@@ -525,36 +525,36 @@ export default function App() {
                       )}
 
                       <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                        <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ flex: 1, background: "#fff", border: "2px solid var(--ink)", padding: "4px 8px", fontWeight: "900", fontFamily: "Bebas Neue", fontSize: "18px", color: "#000" }} />
+                        <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ flex: 1, background: "#fff", border: "2px solid var(--ink)", padding: "2px 6px", fontWeight: "900", fontFamily: "Bebas Neue", fontSize: "16px", color: "#000" }} />
                       </div>
 
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#eee", border: "2px solid var(--ink)", padding: "4px 8px" }}>
-                        <span style={{ fontFamily: "Bebas Neue", fontSize: "14px", fontWeight: "bold", color: "#000" }}>HP:</span>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#eee", border: "2px solid var(--ink)", padding: "3px 6px" }}>
+                        <span style={{ fontFamily: "Bebas Neue", fontSize: "13px", fontWeight: "bold", color: "#000" }}>HP:</span>
                         <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-                          <input disabled={!isGm} type="number" value={shadow.hp} onChange={(e) => updateGm((next) => next.shadows[index].hp = Number(e.target.value))} style={{ width: "50px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold" }} />
+                          <input disabled={!isGm} type="number" value={shadow.hp} onChange={(e) => updateGm((next) => next.shadows[index].hp = Number(e.target.value))} style={{ width: "45px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold" }} />
                           <span style={{ color: "#000" }}>/</span>
-                          <input disabled={!isGm} type="number" value={shadow.maxHp ?? 100} onChange={(e) => updateGm((next) => next.shadows[index].maxHp = Number(e.target.value))} style={{ width: "50px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold" }} />
+                          <input disabled={!isGm} type="number" value={shadow.maxHp ?? 100} onChange={(e) => updateGm((next) => next.shadows[index].maxHp = Number(e.target.value))} style={{ width: "45px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold" }} />
                         </div>
                       </div>
 
-                      <div style={{ width: "100%", height: "140px", background: "#111", border: "2px solid var(--ink)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                      <div style={{ width: "100%", height: "110px", background: "#111", border: "2px solid var(--ink)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
                         {shadow.sprite ? (
                           <img src={shadow.sprite} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                         ) : (
-                          <span style={{ fontFamily: "Bebas Neue", color: "#555", fontSize: "16px" }}>NO SPRITE</span>
+                          <span style={{ fontFamily: "Bebas Neue", color: "#555", fontSize: "14px" }}>NO SPRITE</span>
                         )}
                       </div>
 
                       {isGm && (
-                        <label style={{ padding: "6px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)", fontFamily: "Bebas Neue", fontSize: "15px", fontWeight: "bold", boxShadow: "2px 2px 0 var(--ink)" }}>
+                        <label style={{ padding: "4px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)", fontFamily: "Bebas Neue", fontSize: "14px", fontWeight: "bold", boxShadow: "2px 2px 0 var(--ink)" }}>
                           CHANGE IMAGE
                           <input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => handleImageUpload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} />
                         </label>
                       )}
 
                       <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                        <span style={{ fontFamily: "Bebas Neue", fontSize: "14px", color: "#000" }}>TL</span>
-                        <input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} style={{ width: "45px", textAlign: "center", border: "2px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold" }} />
+                        <span style={{ fontFamily: "Bebas Neue", fontSize: "13px", color: "#000" }}>TL</span>
+                        <input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} style={{ width: "40px", textAlign: "center", border: "2px solid var(--ink)", background: "#fff", color: "#000", fontWeight: "bold" }} />
                         <input disabled={!isGm} value={shadow.status} placeholder="Ailment / Status" onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} style={{ flex: 1, border: "2px solid var(--ink)", background: "#fff", color: "#000", padding: "2px 6px", fontWeight: "bold" }} />
                       </div>
 
