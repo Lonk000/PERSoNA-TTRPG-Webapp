@@ -2,15 +2,18 @@
   "name": "persona-threads-of-fate",
   "version": "1.0.0",
   "dependencies": {
-    "@vercel/kv": "^1.0.1",
+    "@vercel/blob": "^0.27.0",
+    "formidable": "^3.5.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@types/formidable": "^3.5.1",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@vercel/blob": "^2.8.2",
     "@vercel/node": "^3.2.29",
     "@vitejs/plugin-react": "^6.1.2",
     "oxfmt": "^0.2.0",

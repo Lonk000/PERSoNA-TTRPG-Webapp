@@ -1,26 +1,51 @@
-import { getStore } from "@netlify/blobs";
-import type { Context } from "@netlify/functions";
+import { put } from "@vercel/blob";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import formidable from "formidable";
+import fs from "fs";
 
-export default async (req: Request, context: Context) => {
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+// Disable default body parser so we can handle multipart/form-data files via formidable
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
-  const formData = await req.formData();
-  const file = formData.get("file") as File;
-  
-  if (!file) {
-    return new Response(JSON.stringify({ error: "No file provided" }), { status: 400 });
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const store = getStore("campaign-images");
-  const fileName = `${Date.now()}-${file.name}`;
-  
-  // Save the binary file directly to blobs
-  await store.set(fileName, file);
+  try {
+    // Parse incoming multipart form data using formidable
+    const form = formidable({});
+    
+    const [fields, files] = await new Promise<[formidable.Fields, formidable.Files]>((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) reject(err);
+        else resolve([fields, files]);
+      });
+    });
 
-  // Return a URL pointing to your function or asset retrieval route
-  const url = `/api/images/${fileName}`;
+    const fileArray = files.file;
+    const file = Array.isArray(fileArray) ? fileArray[0] : fileArray;
 
-  return new Response(JSON.stringify({ url }), {
-    headers: { "Content-Type": "application/json" }
-  });
-};
+    if (!file) {
+      return res.status(400).json({ error: "No file provided" });
+    }
+
+    const fileBuffer = fs.readFileSync(file.filepath);
+    const fileName = `${Date.now()}-${file.originalFilename || "upload"}`;
+
+    // Upload the file directly to Vercel Blob storage
+    const blob = await put(fileName, fileBuffer, {
+      access: "public",
+      contentType: file.mimetype || "application/octet-stream",
+    });
+
+    // Return the public blob URL to the frontend
+    return res.status(200).json({ url: blob.url });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Image upload failed";
+    return res.status(500).json({ error: message });
+  }
+}
