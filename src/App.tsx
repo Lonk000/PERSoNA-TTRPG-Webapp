@@ -188,9 +188,9 @@ function DraggableShadowBox({ x = 30, y = 30, disabled, onUpdate, children }: { 
 
 export default function App() {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const [role, setRole] = useState<Role>(() => (sessionStorage.getItem("persona_role") as Role) || "gm");
+  const [role, setRole] = useState<Role>("gm");
   const [mode, setMode] = useState<Mode>("combat");
-  const [authenticated, setAuthenticated] = useState<boolean>(() => sessionStorage.getItem("persona_auth") === "true");
+  const [authenticated, setAuthenticated] = useState<boolean>(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -223,6 +223,7 @@ export default function App() {
       setAuthenticated(true);
       sessionStorage.setItem("persona_auth", "true");
     } catch {
+      // Fallback if backend fetch fails initially
       setAuthenticated(true);
     }
   }, []);
@@ -477,7 +478,17 @@ export default function App() {
           </div>
           <button className="week-arrow" disabled={!isGm} onClick={() => updateGm((next) => next.calendar.weekStart = Math.min(22, next.calendar.weekStart + 7))}>›</button>
         </div>
-        <div className="session-chip"><span>{role.toUpperCase()}</span><strong>LIVE</strong><button onClick={() => { sessionStorage.clear(); setAuthenticated(false); }}>SWITCH ROLE</button></div>
+        <div className="session-chip">
+          <span>{role.toUpperCase()}</span>
+          <strong>LIVE</strong>
+          <button onClick={() => { 
+            sessionStorage.removeItem("persona_auth");
+            sessionStorage.removeItem("persona_role");
+            setAuthenticated(false);
+            setCampaign(null);
+            load();
+          }}>SWITCH ROLE</button>
+        </div>
       </header>
 
       <div className="content">
