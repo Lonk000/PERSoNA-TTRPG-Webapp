@@ -28,7 +28,7 @@ function Mark({ children }: { children: React.ReactNode }) {
   return <span className="mark">{children}</span>;
 }
 
-function TransformBox({ x = 10, y = 10, width = 220, height = 280, disabled, onUpdate, children }: { x?: number; y?: number; width?: number; height?: number; disabled: boolean; onUpdate: (box: { x: number; y: number; width: number; height: number }) => void; children: ReactNode }) {
+function TransformBox({ x = 10, y = 10, width = 240, height = 300, disabled, onUpdate, children }: { x?: number; y?: number; width?: number; height?: number; disabled: boolean; onUpdate: (box: { x: number; y: number; width: number; height: number }) => void; children: ReactNode }) {
   const [pos, setPos] = useState({ x, y, width, height });
   const [hovered, setHovered] = useState(false);
 
@@ -54,18 +54,18 @@ function TransformBox({ x = 10, y = 10, width = 220, height = 280, disabled, onU
           next.x = initialPos.x + dx;
           next.y = initialPos.y + dy;
         } else {
-          if (handle.includes("right")) next.width = Math.max(120, initialPos.width + dx);
-          if (handle.includes("bottom")) next.height = Math.max(140, initialPos.height + dy);
+          if (handle.includes("right")) next.width = Math.max(140, initialPos.width + dx);
+          if (handle.includes("bottom")) next.height = Math.max(160, initialPos.height + dy);
           if (handle.includes("left")) {
             const newW = initialPos.width - dx;
-            if (newW >= 120) {
+            if (newW >= 140) {
               next.width = newW;
               next.x = initialPos.x + dx;
             }
           }
           if (handle.includes("top")) {
             const newH = initialPos.height - dy;
-            if (newH >= 140) {
+            if (newH >= 160) {
               next.height = newH;
               next.y = initialPos.y + dy;
             }
@@ -172,11 +172,15 @@ function App() {
   const persistPlayer = async (id: string, patch: Partial<Player>) => {
     try {
       const result = await patchPlayer(id, patch);
-      setCampaign(result.campaign);
+      if (result && result.campaign) {
+        setCampaign(result.campaign);
+      }
       setNotice("SAVED");
-    } catch (reason) {
-      setNotice(reason instanceof Error ? reason.message : "SAVE FAILED");
-      load();
+    } catch {
+      updateGm((next) => {
+        next.players = next.players.map((p) => p.id === id ? { ...p, ...patch } : p);
+      });
+      setNotice("SAVED (LOCAL)");
     } finally {
       dirty.current = false;
     }
@@ -189,8 +193,12 @@ function App() {
     setNotice("UPLOADING");
     try {
       const result = await uploadImage(file, scope);
-      await apply(result.url);
-      setNotice("SAVED");
+      if (result && result.url) {
+        await apply(result.url);
+        setNotice("SAVED");
+      } else {
+        throw new Error("Invalid upload response");
+      }
     } catch (reason) {
       setNotice(reason instanceof Error ? reason.message : "UPLOAD FAILED");
     }
@@ -208,27 +216,31 @@ function App() {
 
   const addShadow = () => {
     updateGm((next) => {
-      next.shadows.push({ id: crypto.randomUUID(), name: `Shadow ${next.shadows.length + 1}`, hp: 100, threat: 1, status: "Normal", x: 40 + next.shadows.length * 160, y: 60, width: 220, height: 280 });
+      next.shadows.push({ id: crypto.randomUUID(), name: `Shadow ${next.shadows.length + 1}`, hp: 100, threat: 1, status: "Normal", x: 40 + next.shadows.length * 160, y: 60, width: 220, height: 300 });
     });
   };
 
   const handleAddNewPlayer = async () => {
     try {
       const res = await addPlayer();
-      setCampaign(res.campaign);
-      setNotice("SAVED");
-    } catch (e) {
-      updateGm((next) => {
-        next.players.push({
-          id: crypto.randomUUID(),
-          name: `PC ${next.players.length + 1}`,
-          role: "Attacker",
-          hp: 100,
-          sp: 50,
-          initial: "P",
-        });
-      });
+      if (res && res.campaign) {
+        setCampaign(res.campaign);
+        setNotice("SAVED");
+        return;
+      }
+    } catch {
+      // Fallback local update if API is unlinked
     }
+    updateGm((next) => {
+      next.players.push({
+        id: crypto.randomUUID(),
+        name: `PC ${next.players.length + 1}`,
+        role: "Attacker",
+        hp: 100,
+        sp: 50,
+        initial: "P",
+      });
+    });
   };
 
   const handleWheel = (e: WheelEvent<HTMLDivElement>) => {
@@ -320,16 +332,16 @@ function App() {
               {mode === "combat" && <div className={`dungeon-scene ${c.battle.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.battle.background ? { backgroundImage: `url(${c.battle.background})`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}>
                 {!c.battle.background && <><div className="ceiling-lines" /><div className="corridor-end"><span /><span /></div><div className="floor-grid" /></>}
                 {c.shadows.map((shadow, index) => (
-                  <TransformBox key={shadow.id} x={shadow.x ?? (40 + index * 160)} y={shadow.y ?? 50} width={shadow.width ?? 220} height={shadow.height ?? 280} disabled={!isGm} onUpdate={(box) => updateGm((next) => { next.shadows[index].x = box.x; next.shadows[index].y = box.y; next.shadows[index].width = box.width; next.shadows[index].height = box.height; })}>
-                    <div className="enemy-unit" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "transparent", border: "none", padding: "0", boxSizing: "border-box" }}>
-                      <div className="enemy-name" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--paper)", border: "2px solid var(--ink)", padding: "4px" }}>
+                  <TransformBox key={shadow.id} x={shadow.x ?? (40 + index * 180)} y={shadow.y ?? 50} width={shadow.width ?? 220} height={shadow.height ?? 300} disabled={!isGm} onUpdate={(box) => updateGm((next) => { next.shadows[index].x = box.x; next.shadows[index].y = box.y; next.shadows[index].width = box.width; next.shadows[index].height = box.height; })}>
+                    <div className="enemy-unit" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "var(--paper)", border: "2px solid var(--ink)", padding: "6px", boxSizing: "border-box" }}>
+                      <div className="enemy-name" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ width: "50%" }} />
                         <div className="enemy-hp" style={{ width: "45%" }}><i style={{ width: `${shadow.hp}%` }} /><span>{shadow.hp} HP</span></div>
                       </div>
-                      <div className={`shadow-figure ${shadow.sprite ? "has-sprite" : ""}`} style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", marginTop: "4px" }}>
+                      <div className={`shadow-figure ${shadow.sprite ? "has-sprite" : ""}`} style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", marginTop: "4px", minHeight: "100px" }}>
                         {shadow.sprite ? <img src={shadow.sprite} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <><i className="horn left" /><i className="horn right" /><span className="shadow-head"><b /><b /></span><span className="shadow-body" /><i className="shadow-arm left" /><i className="shadow-arm right" /><i className="shadow-leg left" /><i className="shadow-leg right" /></>}
                       </div>
-                      {isGm && <label style={{ padding: "6px", fontSize: "11px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)", display: "block", marginTop: "4px" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
+                      {isGm && <label style={{ padding: "4px", fontSize: "10px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "2px solid var(--ink)", display: "block", marginTop: "4px" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
                       <div className="enemy-status" style={{ marginTop: "4px" }}><span>TL</span><input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} /><input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} /></div>
                       {isGm && <div className="shadow-controls" style={{ display: "flex", gap: "4px", marginTop: "4px" }}><button type="button" onClick={() => moveShadow(index, "left")} disabled={index === 0}>‹</button><button type="button" onClick={() => updateGm((next) => next.shadows.splice(index, 1))}>×</button><button type="button" onClick={() => moveShadow(index, "right")} disabled={index === c.shadows.length - 1}>›</button></div>}
                     </div>
@@ -383,11 +395,18 @@ function App() {
         <div className="party-members">{c.players.map((player, index) => <div className={`hero-card ${index % 2 ? "white" : "mint"}`} key={player.id}>
           <div className="hero-name"><span>{String(index + 1).padStart(2, "0")}</span><input disabled={!isGm} value={player.name} onChange={(event) => updatePlayerLocal(player.id, { name: event.target.value })} onBlur={(event) => persistPlayer(player.id, { name: event.target.value })} /><input disabled={!isGm} value={player.role} onChange={(event) => updatePlayerLocal(player.id, { role: event.target.value })} onBlur={(event) => persistPlayer(player.id, { role: event.target.value })} /></div>
           <div className="art-pair">
-            <label className={`portrait ${player.art ? "has-art" : ""}`}>{player.art ? <img src={player.art} alt="" /> : <span>{player.initial}</span>}<small>CHARACTER</small><input type="file" accept="image/*" onChange={(event) => upload(event, "player", async (url) => setCampaign((await patchPlayer(player.id, { art: url })).campaign))} /></label>
-            <label className={`portrait persona-art ${player.personaArt ? "has-art" : ""}`}>{player.personaArt ? <img src={player.personaArt} alt="" /> : <span>P</span>}<small>PERSONA</small><input type="file" accept="image/*" onChange={(event) => upload(event, "player", async (url) => setCampaign((await patchPlayer(player.id, { personaArt: url })).campaign))} /></label>
+            <label className={`portrait ${player.art ? "has-art" : ""}`}>{player.art ? <img src={player.art} alt="" /> : <span>{player.initial}</span>}<small>CHARACTER</small><input type="file" accept="image/*" onChange={(event) => upload(event, "player", async (url) => persistPlayer(player.id, { art: url }))} /></label>
+            <label className={`portrait persona-art ${player.personaArt ? "has-art" : ""}`}>{player.personaArt ? <img src={player.personaArt} alt="" /> : <span>P</span>}<small>PERSONA</small><input type="file" accept="image/*" onChange={(event) => upload(event, "player", async (url) => persistPlayer(player.id, { personaArt: url }))} /></label>
           </div>
           <div className="meters">{(["hp", "sp"] as const).map((resource) => <label className={`number-resource ${resource}`} key={resource}><span>{resource.toUpperCase()}</span><input type="number" min="0" value={player[resource]} onChange={(event) => updatePlayerLocal(player.id, { [resource]: Number(event.target.value) })} onBlur={(event) => persistPlayer(player.id, { [resource]: Number(event.target.value) })} /></label>)}</div>
-          {isGm && <button className="remove-player" onClick={async () => setCampaign((await removePlayer(player.id)).campaign)}>REMOVE</button>}
+          {isGm && <button className="remove-player" onClick={async () => {
+            try {
+              const res = await removePlayer(player.id);
+              if (res && res.campaign) setCampaign(res.campaign);
+            } catch {
+              updateGm((next) => { next.players = next.players.filter((p) => p.id !== player.id); });
+            }
+          }}>REMOVE</button>}
         </div>)}</div>
         <div className="phase"><span>ACCESS</span><strong>{role.toUpperCase()}</strong><small>GLOBAL</small></div>
       </footer>
