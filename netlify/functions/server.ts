@@ -46,5 +46,6 @@ export default async (req: Request, context: Context) => {
 };
 
 export const config: Config = {
-  path: "/api/*",
+  // Auth placeholder endpoints; data routes live in their own functions.
+  path: ["/api/signup", "/api/signin"],
 };

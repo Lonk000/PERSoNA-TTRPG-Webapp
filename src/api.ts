@@ -10,8 +10,8 @@ async function request(path: string, options: RequestInit = {}) {
     },
   });
 
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || "Request failed.");
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || `Request failed (${response.status}).`);
   return payload;
 }
 
@@ -30,7 +30,8 @@ export async function signIn(email: string, password: string) {
   });
 }
 
-// Campaign & Player endpoints
+// Campaign & Player endpoints (Postgres-backed via Netlify Database).
+// Saving the campaign persists scene state, shadows and map pins; players are written through their own endpoints.
 export const getCampaign = () => request("/campaign");
 export const saveCampaign = (campaign: unknown) => request("/campaign", { method: "PUT", body: JSON.stringify(campaign) });
 export const patchPlayer = (id: string, patch: unknown) => request(`/players/${id}`, { method: "PATCH", body: JSON.stringify(patch) });

@@ -1,26 +1,29 @@
 import { getStore } from "@netlify/blobs";
-import type { Context } from "@netlify/functions";
+import type { Config } from "@netlify/functions";
 
-export default async (req: Request, context: Context) => {
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+export default async (req: Request) => {
+  if (req.method !== "POST") return Response.json({ error: "Method not allowed" }, { status: 405 });
 
   const formData = await req.formData();
-  const file = formData.get("file") as File;
-  
-  if (!file) {
-    return new Response(JSON.stringify({ error: "No file provided" }), { status: 400 });
+  const file = formData.get("file");
+
+  if (!(file instanceof File)) {
+    return Response.json({ error: "No file provided" }, { status: 400 });
+  }
+  if (!file.type.startsWith("image/")) {
+    return Response.json({ error: "Only image uploads are supported" }, { status: 400 });
   }
 
   const store = getStore("campaign-images");
-  const fileName = `${Date.now()}-${file.name}`;
-  
-  // Save the binary file directly to blobs
-  await store.set(fileName, file);
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const fileName = `${Date.now()}-${safeName}`;
 
-  // Return a URL pointing to your function or asset retrieval route
-  const url = `/api/images/${fileName}`;
+  // Save the binary file to Blobs; its URL is what gets stored in Postgres.
+  await store.set(fileName, file, { metadata: { contentType: file.type } });
 
-  return new Response(JSON.stringify({ url }), {
-    headers: { "Content-Type": "application/json" }
-  });
+  return Response.json({ url: `/api/images/${fileName}` });
+};
+
+export const config: Config = {
+  path: "/api/upload",
 };

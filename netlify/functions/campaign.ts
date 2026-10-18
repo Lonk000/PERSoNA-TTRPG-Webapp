@@ -1,40 +1,26 @@
-import { getStore } from "@netlify/blobs";
-import type { Context } from "@netlify/functions";
+import type { Config } from "@netlify/functions";
+import { loadCampaign, saveCampaignState } from "../../db/campaign.js";
 
-export default async (req: Request, context: Context) => {
-  const store = getStore("campaign-store");
-  const key = "main-campaign";
-
-  if (req.method === "GET") {
-    let campaignData = await store.get(key, { type: "json" });
-
-    // Fallback default campaign data if none exists yet
-    if (!campaignData) {
-      campaignData = {
-        calendar: { month: 0, season: 0, selectedDay: 0, weekStart: 1 },
-        players: [],
-        shadows: [
-          { id: "1", name: "Shadow Igniter", hp: 100, threat: 5, status: "Normal" }
-        ],
-        battle: { background: "", objective: "Secure the corridor", round: 1 },
-        roam: { background: "", location: "Central District", details: "A bustling alleyway.", points: [] },
-        map: { background: "", pins: [] }
-      };
-      await store.setJSON(key, campaignData);
+export default async (req: Request) => {
+  try {
+    if (req.method === "GET") {
+      return Response.json({ campaign: await loadCampaign(), role: "gm" });
     }
 
-    return new Response(JSON.stringify({ campaign: campaignData, role: "gm" }), {
-      headers: { "Content-Type": "application/json" }
-    });
-  }
+    if (req.method === "PUT") {
+      const body = await req.json().catch(() => null);
+      if (!body || typeof body !== "object") return Response.json({ error: "Invalid campaign payload." }, { status: 400 });
+      await saveCampaignState(body);
+      return Response.json({ success: true, campaign: await loadCampaign() });
+    }
 
-  if (req.method === "PUT") {
-    const body = await req.json();
-    await store.setJSON(key, body);
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { "Content-Type": "application/json" }
-    });
+    return Response.json({ error: "Method not allowed" }, { status: 405 });
+  } catch (error) {
+    console.error("Campaign request failed", error);
+    return Response.json({ error: "Unable to reach the campaign database." }, { status: 500 });
   }
+};
 
-  return new Response("Method not allowed", { status: 405 });
+export const config: Config = {
+  path: "/api/campaign",
 };
