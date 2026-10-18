@@ -3,7 +3,6 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import formidable from "formidable";
 import fs from "fs";
 
-// Disable default body parser so we can handle multipart/form-data files via formidable
 export const config = {
   api: {
     bodyParser: false,
@@ -16,10 +15,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Parse incoming multipart form data using formidable
     const form = formidable({});
     
-    const [fields, files] = await new Promise<[formidable.Fields, formidable.Files]>((resolve, reject) => {
+    const [_, files] = await new Promise<[formidable.Fields, formidable.Files]>((resolve, reject) => {
       form.parse(req, (err, fields, files) => {
         if (err) reject(err);
         else resolve([fields, files]);
@@ -36,16 +34,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const fileBuffer = fs.readFileSync(file.filepath);
     const fileName = `${Date.now()}-${file.originalFilename || "upload"}`;
 
-    // Upload the file directly to Vercel Blob storage
     const blob = await put(fileName, fileBuffer, {
       access: "public",
       contentType: file.mimetype || "application/octet-stream",
+      allowOverwrite: true,
     });
 
-    // Return the public blob URL to the frontend
     return res.status(200).json({ url: blob.url });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Image upload failed";
+    console.error("Upload API Error:", message);
     return res.status(500).json({ error: message });
   }
 }
