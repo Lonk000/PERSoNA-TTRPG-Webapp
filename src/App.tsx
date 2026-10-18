@@ -3,8 +3,8 @@ import { addPlayer, getCampaign, patchPlayer, removePlayer, saveCampaign, upload
 
 type Mode = "combat" | "roam" | "map";
 type Role = "gm" | "player";
-type Player = { id: string; name: string; role: string; hp: number; sp: number; initial: string; art?: string; personaArt?: string };
-type ShadowData = { id: string; name: string; hp: number; threat: number; status: string; sprite?: string; x?: number; y?: number };
+type Player = { id: string; name: string; role: string; hp: number; maxHp?: number; sp: number; maxSp?: number; initial: string; art?: string; personaArt?: string };
+type ShadowData = { id: string; name: string; hp: number; maxHp?: number; threat: number; status: string; sprite?: string; x?: number; y?: number };
 type Point = { id: string; title: string; detail: string };
 type Pin = { id: string; x: number; y: number; label: string; tooltip: string; iconUrl: string };
 type Campaign = {
@@ -22,7 +22,6 @@ const weekdays = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const seasons = ["WINTER", "SPRING", "SUMMER", "FALL"];
 
-// Pin Icon Presets from https://game-icons.net/
 const PIN_ICONS = [
   { name: "House", url: "https://game-icons.net/icons/ffffff/transparent/1x1/delapouite/wooden-cabin.svg" },
   { name: "Shop", url: "https://game-icons.net/icons/ffffff/transparent/1x1/delapouite/shop.svg" },
@@ -47,7 +46,96 @@ function Mark({ children }: { children: React.ReactNode }) {
   return <span className="mark">{children}</span>;
 }
 
-// Draggable container for Shadow Units
+// Image Cropper Modal Component
+function ImageCropperModal({ imageSrc, onCancel, onCropComplete }: { imageSrc: string; onCancel: () => void; onCropComplete: (croppedUrl: string) => void }) {
+  const [crop, setCrop] = useState({ x: 10, y: 10, width: 80, height: 80 });
+  const [dragging, setDragging] = useState<string | null>(null);
+  const startMouse = useRef({ x: 0, y: 0 });
+  const startCrop = useRef({ ...crop });
+  const imgRef = useRef<HTMLImageElement | null>(null);
+
+  const handleMouseDown = (e: MouseEvent, type: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setDragging(type);
+    startMouse.current = { x: e.clientX, y: e.clientY };
+    startCrop.current = { ...crop };
+  };
+
+  const handleMouseMove = (e: globalThis.MouseEvent) => {
+    if (!dragging) return;
+    const dx = ((e.clientX - startMouse.current.x) / (imgRef.current?.width || 300)) * 100;
+    const dy = ((e.clientY - startMouse.current.y) / (imgRef.current?.height || 300)) * 100;
+
+    setCrop(() => {
+      let next = { ...startCrop.current };
+      if (dragging === "move") {
+        next.x = Math.max(0, Math.min(100 - next.width, startCrop.current.x + dx));
+        next.y = Math.max(0, Math.min(100 - next.height, startCrop.current.y + dy));
+      } else if (dragging === "se") {
+        next.width = Math.max(20, Math.min(100 - next.x, startCrop.current.width + dx));
+        next.height = Math.max(20, Math.min(100 - next.y, startCrop.current.height + dy));
+      }
+      return next;
+    });
+  };
+
+  const handleMouseUp = () => {
+    setDragging(null);
+  };
+
+  useEffect(() => {
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [dragging]);
+
+  const generateCroppedImage = () => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = imageSrc;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const sX = (crop.x / 100) * img.naturalWidth;
+      const sY = (crop.y / 100) * img.naturalHeight;
+      const sW = (crop.width / 100) * img.naturalWidth;
+      const sH = (crop.height / 100) * img.naturalHeight;
+
+      canvas.width = sW;
+      canvas.height = sH;
+      ctx.drawImage(img, sX, sY, sW, sH, 0, 0, sW, sH);
+      onCropComplete(canvas.toDataURL("image/png"));
+    };
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 10000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+      <div style={{ background: "var(--paper)", border: "4px solid var(--ink)", padding: "20px", boxShadow: "8px 8px 0 var(--mint)", maxWidth: "500px", width: "100%" }}>
+        <h3 style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "24px", marginBottom: "12px" }}>CROP IMAGE AREA</h3>
+        <div style={{ position: "relative", display: "inline-block", overflow: "hidden", border: "2px solid var(--ink)", background: "#000", width: "100%", maxHeight: "350px", textAlign: "center" }}>
+          <img ref={imgRef} src={imageSrc} alt="" style={{ maxWidth: "100%", maxHeight: "350px", display: "block", margin: "0 auto", objectFit: "contain" }} />
+          <div 
+            onMouseDown={(e) => handleMouseDown(e, "move")}
+            style={{ position: "absolute", left: `${crop.x}%`, top: `${crop.y}%`, width: `${crop.width}%`, height: `${crop.height}%`, border: "2px dashed var(--mint)", background: "rgba(110, 255, 180, 0.2)", cursor: "move" }}
+          >
+            <div onMouseDown={(e) => handleMouseDown(e, "se")} style={{ position: "absolute", right: -6, bottom: -6, width: 14, height: 14, background: "var(--mint)", border: "2px solid var(--ink)", cursor: "se-resize" }} />
+          </div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "16px" }}>
+          <button onClick={onCancel} style={{ padding: "8px 16px", background: "#fff", border: "2px solid var(--ink)", fontFamily: "Bebas Neue, sans-serif", cursor: "pointer" }}>CANCEL</button>
+          <button onClick={generateCroppedImage} style={{ padding: "8px 16px", background: "var(--mint)", border: "2px solid var(--ink)", fontFamily: "Bebas Neue, sans-serif", cursor: "pointer", fontWeight: "bold" }}>APPLY CROP</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DraggableShadowBox({ x = 30, y = 30, disabled, onUpdate, children }: { x?: number; y?: number; disabled: boolean; onUpdate: (pos: { x: number; y: number }) => void; children: ReactNode }) {
   const [pos, setPos] = useState({ x, y });
 
@@ -111,6 +199,9 @@ function App() {
   const [placingPin, setPlacingPin] = useState(false);
   const [selectedPinIconUrl, setSelectedPinIconUrl] = useState(PIN_ICONS[2].url);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+
+  // Cropper state
+  const [cropData, setCropData] = useState<{ src: string; callback: (url: string) => void } | null>(null);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirty = useRef(false);
@@ -185,22 +276,38 @@ function App() {
     }
   };
 
-  const upload = async (event: ChangeEvent<HTMLInputElement>, scope: "gm" | "player", apply: (url: string) => void | Promise<void>) => {
+  const handleImageUpload = (event: ChangeEvent<HTMLInputElement>, scope: "gm" | "player", apply: (url: string) => void | Promise<void>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    addToast("UPLOADING IMAGE...", "info");
-    try {
-      const result = await uploadImage(file, scope);
-      if (result && result.url) {
-        await apply(result.url);
-        addToast("UPLOAD SUCCESSFUL", "success");
-      } else {
-        throw new Error("Invalid upload response");
-      }
-    } catch (reason) {
-      addToast(reason instanceof Error ? reason.message : "UPLOAD FAILED", "error");
-    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64Url = e.target?.result as string;
+      setCropData({
+        src: base64Url,
+        callback: async (croppedUrl) => {
+          setCropData(null);
+          addToast("UPLOADING CROPPED IMAGE...", "info");
+          try {
+            // Convert data URL back to file for upload
+            const res = await fetch(croppedUrl);
+            const blob = await res.blob();
+            const croppedFile = new File([blob], file.name, { type: "image/png" });
+            const result = await uploadImage(croppedFile, scope);
+            if (result && result.url) {
+              await apply(result.url);
+              addToast("UPLOAD SUCCESSFUL", "success");
+            } else {
+              throw new Error("Invalid upload response");
+            }
+          } catch (reason) {
+            addToast(reason instanceof Error ? reason.message : "UPLOAD FAILED", "error");
+          }
+        }
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   const moveShadow = (index: number, direction: "left" | "right") => {
@@ -221,6 +328,7 @@ function App() {
         id: crypto.randomUUID(), 
         name: `SHADOW ${next.shadows.length + 1}`, 
         hp: 100, 
+        maxHp: 100,
         threat: 1, 
         status: "Normal", 
         x: offset, 
@@ -247,7 +355,9 @@ function App() {
         name: `PC ${next.players.length + 1}`,
         role: "Attacker",
         hp: 100,
+        maxHp: 100,
         sp: 50,
+        maxSp: 50,
         initial: "P",
       });
     });
@@ -319,6 +429,15 @@ function App() {
     <main className="app-shell">
       <div className="noise" />
 
+      {/* Image Cropper Modal Overlay */}
+      {cropData && (
+        <ImageCropperModal 
+          imageSrc={cropData.src} 
+          onCancel={() => setCropData(null)} 
+          onCropComplete={cropData.callback} 
+        />
+      )}
+
       {/* Toast Notifications */}
       <div style={{ position: "fixed", top: "20px", right: "20px", zIndex: 9999, display: "flex", flexDirection: "column", gap: "10px", pointerEvents: "none" }}>
         {toasts.map((toast) => (
@@ -386,13 +505,14 @@ function App() {
                         <input disabled={!isGm} value={shadow.name} onChange={(event) => updateGm((next) => next.shadows[index].name = event.target.value)} style={{ width: "100%", background: "transparent", border: "none", fontWeight: "900", color: "#000", fontSize: "16px", fontFamily: "Bebas Neue, sans-serif" }} />
                       </div>
 
-                      {/* HP Bar */}
-                      <div className="enemy-hp" style={{ background: "var(--paper)", border: "3px solid var(--ink)", borderTop: "none", padding: "6px 8px", display: "flex", alignItems: "center", gap: "8px", minHeight: "30px" }}>
-                        <div style={{ flex: 1, background: "#ccc", height: "14px", border: "2px solid var(--ink)", position: "relative", overflow: "hidden" }}>
-                          <i style={{ width: `${Math.min(100, Math.max(0, shadow.hp))}%`, display: "block", height: "100%", background: "var(--mint)" }} />
+                      {/* Current / Max HP Box (No Bar) */}
+                      <div className="enemy-hp" style={{ background: "var(--paper)", border: "3px solid var(--ink)", borderTop: "none", padding: "6px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", minHeight: "32px" }}>
+                        <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "14px", color: "#000", fontWeight: "bold" }}>HP:</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                          <input disabled={!isGm} type="number" value={shadow.hp} onChange={(event) => updateGm((next) => next.shadows[index].hp = Number(event.target.value))} style={{ width: "50px", height: "24px", background: "#fff", border: "1px solid var(--ink)", fontWeight: "bold", textAlign: "center", fontSize: "13px" }} />
+                          <span>/</span>
+                          <input disabled={!isGm} type="number" value={shadow.maxHp ?? 100} onChange={(event) => updateGm((next) => next.shadows[index].maxHp = Number(event.target.value))} style={{ width: "50px", height: "24px", background: "#fff", border: "1px solid var(--ink)", fontWeight: "bold", textAlign: "center", fontSize: "13px" }} />
                         </div>
-                        <input disabled={!isGm} type="number" min="0" max="100" value={shadow.hp} onChange={(event) => updateGm((next) => next.shadows[index].hp = Number(event.target.value))} style={{ width: "45px", height: "22px", background: "#fff", border: "1px solid var(--ink)", fontWeight: "bold", textAlign: "center", fontSize: "13px" }} />
-                        <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "14px", color: "#000", fontWeight: "bold" }}>HP</span>
                       </div>
 
                       {/* Sprite Image Frame */}
@@ -407,7 +527,7 @@ function App() {
                       </div>
 
                       {/* Change Image Button */}
-                      {isGm && <label style={{ padding: "6px 10px", fontSize: "13px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "3px solid var(--ink)", display: "block", fontFamily: "Bebas Neue, sans-serif", boxShadow: "3px 3px 0 var(--ink)", fontWeight: "bold" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
+                      {isGm && <label style={{ padding: "6px 10px", fontSize: "13px", textAlign: "center", cursor: "pointer", background: "var(--mint)", color: "var(--ink)", border: "3px solid var(--ink)", display: "block", fontFamily: "Bebas Neue, sans-serif", boxShadow: "3px 3px 0 var(--ink)", fontWeight: "bold" }}><strong>CHANGE IMAGE</strong><input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => handleImageUpload(event, "gm", (url) => updateGm((next) => next.shadows[index].sprite = url))} /></label>}
                       
                       {/* TL & Status Bar */}
                       <div className="enemy-status" style={{ marginTop: "6px", background: "var(--paper)", border: "3px solid var(--ink)", padding: "6px 8px", display: "flex", alignItems: "center", gap: "6px", boxShadow: "3px 3px 0 var(--ink)" }}>
@@ -445,65 +565,65 @@ function App() {
                   </button>
                 )}
                 
-                {isGm && <label className="background-upload"><strong>SWAP BACKGROUND</strong><span>JPG, PNG, WEBP</span><input type="file" accept="image/*" onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.battle.background = url))} /></label>}
+                {isGm && <label className="background-upload"><strong>SWAP BACKGROUND</strong><span>JPG, PNG, WEBP</span><input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, "gm", (url) => updateGm((next) => next.battle.background = url))} /></label>}
                 <div className="objective-tag"><span>OBJECTIVE</span><input disabled={!isGm} value={c.battle.objective} onChange={(event) => updateGm((next) => next.battle.objective = event.target.value)} /></div>
                 <div className="turn-tag"><span>ROUND</span><input disabled={!isGm} type="number" value={c.battle.round} onChange={(event) => updateGm((next) => next.battle.round = Number(event.target.value))} /></div>
               </div>}
 
-              {/* FREE ROAM MODE */}
+              {/* FREE ROAM MODE WITH BLACK POI BOX */}
               {mode === "roam" && <div className={`roam-scene ${c.roam.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.roam.background ? { backgroundImage: `url(${c.roam.background})`, backgroundSize: "cover", backgroundPosition: "center" } : {}) }}>
                 {!c.roam.background && <><div className="roam-sky"><span /><span /><span /></div><div className="roam-city"><i /><i /><i /><i /><i /><i /></div><div className="roam-road" /></>}
-                {isGm && <label className="background-upload"><strong>SWAP FREE ROAM IMAGE</strong><input type="file" accept="image/*" onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.roam.background = url))} /></label>}
+                {isGm && <label className="background-upload"><strong>SWAP FREE ROAM IMAGE</strong><input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, "gm", (url) => updateGm((next) => next.roam.background = url))} /></label>}
                 
                 <div className="location-card"><span>CURRENT LOCATION</span><input disabled={!isGm} value={c.roam.location} onChange={(event) => updateGm((next) => next.roam.location = event.target.value)} /><textarea disabled={!isGm} value={c.roam.details} onChange={(event) => updateGm((next) => next.roam.details = event.target.value)} /></div>
 
-                {/* Points of Interest Top-Right */}
-                <div style={{ position: "absolute", top: "20px", right: "20px", width: "320px", background: "var(--paper)", border: "3px solid var(--ink)", padding: "12px", boxShadow: "4px 4px 0 var(--ink)", zIndex: 15 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid var(--ink)", paddingBottom: "6px", marginBottom: "8px" }}>
-                    <strong style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "18px" }}>POINTS OF INTEREST</strong>
-                    {isGm && <button onClick={() => updateGm((next) => { if (!next.roam.points) next.roam.points = []; next.roam.points.push({ id: crypto.randomUUID(), title: "NEW POI", detail: "Notes..." }); })} style={{ background: "var(--mint)", border: "2px solid var(--ink)", padding: "2px 8px", cursor: "pointer", fontWeight: "bold" }}>+ ADD</button>}
+                {/* Points of Interest Top-Right (Solid Black Style) */}
+                <div style={{ position: "absolute", top: "20px", right: "20px", width: "320px", background: "#000", color: "#fff", border: "3px solid var(--mint)", padding: "12px", boxShadow: "4px 4px 0 var(--mint)", zIndex: 15 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "2px solid var(--mint)", paddingBottom: "6px", marginBottom: "8px" }}>
+                    <strong style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "18px", color: "var(--mint)" }}>POINTS OF INTEREST</strong>
+                    {isGm && <button onClick={() => updateGm((next) => { if (!next.roam.points) next.roam.points = []; next.roam.points.push({ id: crypto.randomUUID(), title: "NEW POI", detail: "Notes..." }); })} style={{ background: "var(--mint)", border: "2px solid var(--mint)", color: "#000", padding: "2px 8px", cursor: "pointer", fontWeight: "bold", fontFamily: "Bebas Neue, sans-serif" }}>+ ADD</button>}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "280px", overflowY: "auto" }}>
                     {c.roam.points.map((point, pIdx) => (
-                      <div key={point.id || pIdx} style={{ background: "#fff", border: "2px solid var(--ink)", padding: "6px" }}>
+                      <div key={point.id || pIdx} style={{ background: "#111", border: "2px solid #333", padding: "8px" }}>
                         <div style={{ display: "flex", gap: "4px", marginBottom: "4px" }}>
-                          <input disabled={!isGm} value={point.title} onChange={(e) => updateGm((next) => next.roam.points[pIdx].title = e.target.value)} style={{ flex: 1, fontWeight: "bold", border: "none", background: "transparent" }} />
-                          {isGm && <button onClick={() => updateGm((next) => next.roam.points.splice(pIdx, 1))} style={{ border: "none", background: "transparent", cursor: "pointer", fontWeight: "bold" }}>×</button>}
+                          <input disabled={!isGm} value={point.title} onChange={(e) => updateGm((next) => next.roam.points[pIdx].title = e.target.value)} style={{ flex: 1, fontWeight: "bold", border: "none", background: "transparent", color: "#fff", fontFamily: "Bebas Neue, sans-serif", fontSize: "16px" }} />
+                          {isGm && <button onClick={() => updateGm((next) => next.roam.points.splice(pIdx, 1))} style={{ border: "none", background: "transparent", cursor: "pointer", color: "var(--mint)", fontWeight: "bold" }}>×</button>}
                         </div>
-                        <textarea disabled={!isGm} value={point.detail} onChange={(e) => updateGm((next) => next.roam.points[pIdx].detail = e.target.value)} style={{ width: "100%", height: "40px", border: "1px solid #ddd", fontSize: "12px", resize: "none" }} />
+                        <textarea disabled={!isGm} value={point.detail} onChange={(e) => updateGm((next) => next.roam.points[pIdx].detail = e.target.value)} style={{ width: "100%", height: "40px", border: "1px solid #441", background: "#222", color: "#fff", fontSize: "12px", resize: "none" }} />
                       </div>
                     ))}
                   </div>
                 </div>
               </div>}
 
-              {/* MAP MODE WITH GAME-ICONS.NET & CURSOR TRACKING */}
+              {/* MAP MODE WITH BLACK PIN BOX & GAME-ICONS.NET */}
               {mode === "map" && <div className={`world-map ${c.map.background ? "custom-bg" : ""}`} style={{ width: "100%", height: "100%", position: "relative", ...(c.map.background ? { backgroundImage: `url(${c.map.background})`, backgroundSize: "contain", backgroundRepeat: "no-repeat", backgroundPosition: "center" } : {}) }}>
                 {!c.map.background && <><div className="map-water" /><div className="district north"><span>NORTH WARD</span></div><div className="district central"><span>CENTRAL</span></div><div className="district docks"><span>DOCKS</span></div><div className="district old-town"><span>OLD TOWN</span></div></>}
                 
                 {c.map.pins.map((pin, index) => (
                   <div className="campaign-pin" style={{ left: `${pin.x}%`, top: `${pin.y}%`, position: "absolute", zIndex: 15 }} key={pin.id}>
-                    <div style={{ display: "flex", alignItems: "center", background: "var(--paper)", border: "2px solid var(--ink)", padding: "4px 8px", gap: "6px", boxShadow: "3px 3px 0 var(--ink)", cursor: "pointer" }}>
+                    <div style={{ display: "flex", alignItems: "center", background: "#000", color: "#fff", border: "2px solid var(--mint)", padding: "4px 8px", gap: "6px", boxShadow: "3px 3px 0 var(--mint)", cursor: "pointer" }}>
                       <img src={pin.iconUrl || PIN_ICONS[2].url} alt="" style={{ width: "20px", height: "20px", filter: "invert(1)" }} />
-                      <span style={{ fontWeight: "bold", fontFamily: "Bebas Neue, sans-serif", fontSize: "15px" }}>{pin.label}</span>
+                      <span style={{ fontWeight: "bold", fontFamily: "Bebas Neue, sans-serif", fontSize: "15px", color: "var(--mint)" }}>{pin.label}</span>
                     </div>
                     
                     {/* Hoverable Tooltip */}
-                    <div className="pin-tooltip" style={{ background: "var(--paper)", border: "2px solid var(--ink)", padding: "10px", boxShadow: "4px 4px 0 var(--ink)", minWidth: "180px" }}>
+                    <div className="pin-tooltip" style={{ background: "#000", color: "#fff", border: "2px solid var(--mint)", padding: "10px", boxShadow: "4px 4px 0 var(--mint)", minWidth: "180px" }}>
                       {isGm ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                          <select value={pin.iconUrl} onChange={(e) => updateGm((next) => next.map.pins[index].iconUrl = e.target.value)} style={{ border: "2px solid var(--ink)", padding: "2px", fontWeight: "bold" }}>
+                          <select value={pin.iconUrl} onChange={(e) => updateGm((next) => next.map.pins[index].iconUrl = e.target.value)} style={{ border: "2px solid var(--mint)", background: "#111", color: "#fff", padding: "2px", fontWeight: "bold" }}>
                             {PIN_ICONS.map((ic) => <option key={ic.url} value={ic.url}>{ic.name}</option>)}
                           </select>
                           <div style={{ display: "flex", gap: "4px" }}>
-                            <input value={pin.label} onChange={(event) => updateGm((next) => next.map.pins[index].label = event.target.value)} style={{ flex: 1, fontWeight: "bold", border: "1px solid var(--ink)", padding: "2px 4px" }} />
-                            <button onClick={() => updateGm((next) => next.map.pins.splice(index, 1))} style={{ background: "var(--ink)", color: "#fff", border: "none", padding: "0 6px", cursor: "pointer" }}>×</button>
+                            <input value={pin.label} onChange={(event) => updateGm((next) => next.map.pins[index].label = event.target.value)} style={{ flex: "1", fontWeight: "bold", border: "1px solid #444", background: "#111", color: "#fff", padding: "2px 4px" }} />
+                            <button onClick={() => updateGm((next) => next.map.pins.splice(index, 1))} style={{ background: "var(--mint)", color: "#000", border: "none", padding: "0 6px", cursor: "pointer", fontWeight: "bold" }}>×</button>
                           </div>
-                          <textarea value={pin.tooltip} onChange={(event) => updateGm((next) => next.map.pins[index].tooltip = event.target.value)} style={{ width: "100%", height: "45px", fontSize: "12px", border: "1px solid var(--ink)", padding: "4px" }} />
+                          <textarea value={pin.tooltip} onChange={(event) => updateGm((next) => next.map.pins[index].tooltip = event.target.value)} style={{ width: "100%", height: "45px", fontSize: "12px", border: "1px solid #444", background: "#111", color: "#fff", padding: "4px" }} />
                         </div>
                       ) : (
                         <div>
-                          <strong>{pin.label}</strong>
+                          <strong style={{ color: "var(--mint)" }}>{pin.label}</strong>
                           <p style={{ margin: "4px 0 0 0", fontSize: "12px" }}>{pin.tooltip}</p>
                         </div>
                       )}
@@ -514,32 +634,32 @@ function App() {
                 {/* Cursor Following Preview */}
                 {placingPin && (
                   <div style={{ position: "absolute", left: cursorPos.x, top: cursorPos.y, pointerEvents: "none", transform: "translate(-50%, -100%)", zIndex: 100 }}>
-                    <div style={{ background: "var(--mint)", padding: "6px 12px", border: "3px solid var(--ink)", display: "flex", alignItems: "center", gap: "8px", boxShadow: "4px 4px 0 var(--ink)" }}>
+                    <div style={{ background: "#000", color: "#fff", padding: "6px 12px", border: "3px solid var(--mint)", display: "flex", alignItems: "center", gap: "8px", boxShadow: "4px 4px 0 var(--mint)" }}>
                       <img src={selectedPinIconUrl} alt="" style={{ width: "20px", height: "20px", filter: "invert(1)" }} />
-                      <strong style={{ fontFamily: "Bebas Neue, sans-serif" }}>CLICK TO PLACE</strong>
+                      <strong style={{ fontFamily: "Bebas Neue, sans-serif", color: "var(--mint)" }}>CLICK TO PLACE</strong>
                     </div>
                   </div>
                 )}
 
-                {/* Map Control & Icon Picker */}
+                {/* Map Control & Icon Picker (Solid Black Box) */}
                 {isGm && (
-                  <div style={{ position: "absolute", bottom: 16, right: 16, display: "flex", flexDirection: "column", gap: "8px", zIndex: 20, background: "var(--paper)", padding: "10px", border: "3px solid var(--ink)", boxShadow: "4px 4px 0 var(--ink)" }}>
+                  <div style={{ position: "absolute", bottom: 16, right: 16, display: "flex", flexDirection: "column", gap: "8px", zIndex: 20, background: "#000", color: "#fff", padding: "12px", border: "3px solid var(--mint)", boxShadow: "4px 4px 0 var(--mint)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", maxWidth: "340px" }}>
-                      <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "14px" }}>CHOOSE ICON:</span>
+                      <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "14px", color: "var(--mint)" }}>CHOOSE ICON:</span>
                       {PIN_ICONS.map((ic) => (
-                        <button key={ic.url} title={ic.name} onClick={() => setSelectedPinIconUrl(ic.url)} style={{ background: selectedPinIconUrl === ic.url ? "var(--mint)" : "#fff", border: "2px solid var(--ink)", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center" }}>
-                          <img src={ic.url} alt={ic.name} style={{ width: "16px", height: "16px" }} />
+                        <button key={ic.url} title={ic.name} onClick={() => setSelectedPinIconUrl(ic.url)} style={{ background: selectedPinIconUrl === ic.url ? "var(--mint)" : "#222", border: "2px solid var(--mint)", cursor: "pointer", padding: "4px", display: "flex", alignItems: "center" }}>
+                          <img src={ic.url} alt={ic.name} style={{ width: "16px", height: "16px", filter: selectedPinIconUrl === ic.url ? "none" : "invert(1)" }} />
                         </button>
                       ))}
                     </div>
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      <button type="button" onClick={() => setPlacingPin(!placingPin)} style={{ background: placingPin ? "var(--mint)" : "var(--paper)", color: "var(--ink)", border: "2px solid var(--ink)", fontWeight: "bold", padding: "6px 12px", cursor: "pointer", fontFamily: "Bebas Neue, sans-serif" }}>{placingPin ? "CANCEL" : "+ DROP PIN"}</button>
-                      <button type="button" onClick={() => updateGm((next) => next.map.pins = [])} style={{ border: "2px solid var(--ink)", background: "var(--paper)", fontWeight: "bold", padding: "6px 12px", cursor: "pointer", fontFamily: "Bebas Neue, sans-serif" }}>CLEAR PINS</button>
+                    <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+                      <button type="button" onClick={() => setPlacingPin(!placingPin)} style={{ background: placingPin ? "var(--mint)" : "#222", color: placingPin ? "#000" : "#fff", border: "2px solid var(--mint)", fontWeight: "bold", padding: "6px 12px", cursor: "pointer", fontFamily: "Bebas Neue, sans-serif" }}>{placingPin ? "CANCEL" : "+ DROP PIN"}</button>
+                      <button type="button" onClick={() => updateGm((next) => next.map.pins = [])} style={{ border: "2px solid var(--mint)", background: "#222", color: "#fff", fontWeight: "bold", padding: "6px 12px", cursor: "pointer", fontFamily: "Bebas Neue, sans-serif" }}>CLEAR PINS</button>
                     </div>
                   </div>
                 )}
 
-                {isGm && <label className="background-upload"><strong>SWAP MAP IMAGE</strong><input type="file" accept="image/*" onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.map.background = url))} /></label>}
+                {isGm && <label className="background-upload"><strong>SWAP MAP IMAGE</strong><input type="file" accept="image/*" onChange={(event) => handleImageUpload(event, "gm", (url) => updateGm((next) => next.map.background = url))} /></label>}
               </div>}
 
             </div>
@@ -558,14 +678,15 @@ function App() {
         </aside>
       </div>
 
-      {/* FOOTER PARTY BAR */}
+      {/* FOOTER PARTY BAR WITH RECONFIGURED PLAYER CARD LAYOUT */}
       <footer className="party-bar">
         <div className="party-label"><span>ACTIVE</span><strong>CREW</strong><i>{String(c.players.length).padStart(2, "0")} PCS</i>{isGm && <button onClick={handleAddNewPlayer}>+ ADD PC</button>}</div>
         <div className="party-members" style={{ display: "flex", gap: "12px", overflowX: "auto", padding: "8px 0" }}>
           {c.players.map((player, index) => (
-            <div className={`hero-card ${index % 2 ? "white" : "mint"}`} key={player.id} style={{ position: "relative", minWidth: "260px", flexShrink: 0, padding: "12px", border: "3px solid var(--ink)", boxShadow: "4px 4px 0 var(--ink)" }}>
+            <div className={`hero-card ${index % 2 ? "white" : "mint"}`} key={player.id} style={{ position: "relative", minWidth: "320px", flexShrink: 0, padding: "12px", border: "3px solid var(--ink)", boxShadow: "4px 4px 0 var(--ink)" }}>
               
-              <div className="hero-name" style={{ display: "flex", alignItems: "center", gap: "6px", paddingRight: isGm ? "60px" : "0" }}>
+              {/* Name & Role Input */}
+              <div className="hero-name" style={{ display: "flex", alignItems: "center", gap: "6px", paddingRight: isGm ? "60px" : "0", marginBottom: "8px" }}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <input
                   disabled={!isGm}
@@ -573,7 +694,7 @@ function App() {
                   onChange={(event) => updatePlayerLocal(player.id, { name: event.target.value })}
                   onBlur={(event) => persistPlayer(player.id, { name: event.target.value })}
                   placeholder="PC Name"
-                  style={{ flex: 1, minWidth: 0, fontWeight: "bold" }}
+                  style={{ flex: 1, minWidth: 0, fontWeight: "bold", background: "#fff", border: "1px solid var(--ink)", padding: "2px 6px" }}
                 />
                 <input
                   disabled={!isGm}
@@ -581,10 +702,11 @@ function App() {
                   onChange={(event) => updatePlayerLocal(player.id, { role: event.target.value })}
                   onBlur={(event) => persistPlayer(player.id, { role: event.target.value })}
                   placeholder="Role"
-                  style={{ width: "65px" }}
+                  style={{ width: "65px", background: "#fff", border: "1px solid var(--ink)", padding: "2px 4px" }}
                 />
               </div>
 
+              {/* Remove Button */}
               {isGm && (
                 <button 
                   className="remove-player" 
@@ -614,18 +736,45 @@ function App() {
                 </button>
               )}
 
-              <div className="art-pair" style={{ display: "flex", gap: "8px", margin: "8px 0" }}>
-                <label className={`portrait ${player.art ? "has-art" : ""}`}>{player.art ? <img src={player.art} alt="" /> : <span>{player.initial}</span>}<small>CHARACTER</small><input type="file" accept="image/*" onChange={(event) => upload(event, "player", async (url) => persistPlayer(player.id, { art: url }))} /></label>
-                <label className={`portrait persona-art ${player.personaArt ? "has-art" : ""}`}>{player.personaArt ? <img src={player.personaArt} alt="" /> : <span>P</span>}<small>PERSONA</small><input type="file" accept="image/*" onChange={(event) => upload(event, "player", async (url) => persistPlayer(player.id, { personaArt: url }))} /></label>
-              </div>
-
-              <div className="meters">
-                {(["hp", "sp"] as const).map((resource) => (
-                  <label className={`number-resource ${resource}`} key={resource}>
-                    <span>{resource.toUpperCase()}</span>
-                    <input type="number" min="0" value={player[resource]} onChange={(event) => updatePlayerLocal(player.id, { [resource]: Number(event.target.value) })} onBlur={(event) => persistPlayer(player.id, { [resource]: Number(event.target.value) })} />
+              {/* RECONFIGURED LAYOUT: Character Image on Top & Persona Box Beside */}
+              <div style={{ display: "flex", gap: "10px", alignItems: "stretch" }}>
+                
+                {/* Left Column: Character Image on Top, Meters Below */}
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label className={`portrait ${player.art ? "has-art" : ""}`} style={{ width: "100%", height: "90px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: "2px solid var(--ink)", background: "#fff", position: "relative", cursor: "pointer", overflow: "hidden" }}>
+                    {player.art ? <img src={player.art} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <span style={{ fontFamily: "Bebas Neue, sans-serif" }}>{player.initial}</span>}
+                    <small style={{ position: "absolute", bottom: 2, fontSize: "9px", background: "rgba(0,0,0,0.7)", color: "#fff", width: "100%", textAlign: "center" }}>CHARACTER</small>
+                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => handleImageUpload(event, "player", async (url) => persistPlayer(player.id, { art: url }))} />
                   </label>
-                ))}
+
+                  {/* Meters (HP / SP) */}
+                  <div className="meters" style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--paper)", border: "1px solid var(--ink)", padding: "2px 6px", fontSize: "12px", fontFamily: "Bebas Neue, sans-serif" }}>
+                      <span>HP:</span>
+                      <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
+                        <input type="number" value={player.hp} onChange={(e) => updatePlayerLocal(player.id, { hp: Number(e.target.value) })} onBlur={(e) => persistPlayer(player.id, { hp: Number(e.target.value) })} style={{ width: "40px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff" }} />
+                        <span>/</span>
+                        <input type="number" value={player.maxHp ?? 100} onChange={(e) => updatePlayerLocal(player.id, { maxHp: Number(e.target.value) })} onBlur={(e) => persistPlayer(player.id, { maxHp: Number(e.target.value) })} style={{ width: "40px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff" }} />
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--paper)", border: "1px solid var(--ink)", padding: "2px 6px", fontSize: "12px", fontFamily: "Bebas Neue, sans-serif" }}>
+                      <span>SP:</span>
+                      <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
+                        <input type="number" value={player.sp} onChange={(e) => updatePlayerLocal(player.id, { sp: Number(e.target.value) })} onBlur={(e) => persistPlayer(player.id, { sp: Number(e.target.value) })} style={{ width: "40px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff" }} />
+                        <span>/</span>
+                        <input type="number" value={player.maxSp ?? 50} onChange={(e) => updatePlayerLocal(player.id, { maxSp: Number(e.target.value) })} onBlur={(e) => persistPlayer(player.id, { maxSp: Number(e.target.value) })} style={{ width: "40px", textAlign: "center", border: "1px solid var(--ink)", background: "#fff" }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Persona Box Side-by-Side */}
+                <label className={`portrait persona-art ${player.personaArt ? "has-art" : ""}`} style={{ width: "110px", height: "auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: "2px solid var(--ink)", background: "#fff", position: "relative", cursor: "pointer", overflow: "hidden" }}>
+                  {player.personaArt ? <img src={player.personaArt} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <span style={{ fontFamily: "Bebas Neue, sans-serif", fontSize: "20px" }}>P</span>}
+                  <small style={{ position: "absolute", bottom: 2, fontSize: "9px", background: "rgba(0,0,0,0.7)", color: "#fff", width: "100%", textAlign: "center" }}>PERSONA</small>
+                  <input type="file" accept="image/*" style={{ display: "none" }} onChange={(event) => handleImageUpload(event, "player", async (url) => persistPlayer(player.id, { personaArt: url }))} />
+                </label>
+
               </div>
             </div>
           ))}
