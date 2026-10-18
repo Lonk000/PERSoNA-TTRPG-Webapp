@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type MouseEvent } from "react";
-import { addPlayer, getCampaign, patchPlayer, removePlayer, saveCampaign, signIn, signUp, uploadImage } from "./api";
+import { addPlayer, getCampaign, patchPlayer, removePlayer, saveCampaign, uploadImage } from "./api";
 
 type Mode = "combat" | "roam" | "map";
 type Role = "gm" | "player";
@@ -20,25 +20,11 @@ const weekdays = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const seasons = ["WINTER", "SPRING", "SUMMER", "FALL"];
 
-function Login({ onReady }: { onReady: () => void }) {
-  const [create, setCreate] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+function Login({ onReady }: { onReady: (selectedRole: Role) => void }) {
+  const [selectedRole, setSelectedRole] = useState<Role>("player");
 
-  const submit = async () => {
-    setBusy(true);
-    setError("");
-    try {
-      if (create) await signUp(email, password);
-      else await signIn(email, password);
-      onReady();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Unable to continue.");
-    } finally {
-      setBusy(false);
-    }
+  const submit = () => {
+    onReady(selectedRole);
   };
 
   return (
@@ -47,15 +33,45 @@ function Login({ onReady }: { onReady: () => void }) {
       <section className="login-card">
         <div className="login-mark">RP</div>
         <span>SHARED CAMPAIGN TABLE</span>
-        <strong>{create ? "CREATE ACCOUNT" : "WELCOME BACK"}</strong>
-        <p>The first account created becomes the GM. Later accounts join as players.</p>
-        <label>EMAIL<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></label>
-        <label>PASSWORD<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={create ? "new-password" : "current-password"} /></label>
-        {error && <div className="auth-error">{error}</div>}
-        <button type="button" onClick={submit} disabled={busy || !email || password.length < 6}>{busy ? "SYNCING…" : create ? "CREATE ACCOUNT" : "ENTER CAMPAIGN"}</button>
-        <button className="auth-switch" type="button" onClick={() => setCreate((value) => !value)}>
-          {create ? "Already have an account? Sign in" : "Need an account? Register"}
-        </button>
+        <strong>CHOOSE YOUR ROLE</strong>
+        <p>Select whether you are joining as the Game Master (GM) or a Player Character (PC).</p>
+        
+        <div className="role-selector-options" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", margin: "20px 0" }}>
+          <button
+            type="button"
+            onClick={() => setSelectedRole("gm")}
+            style={{
+              padding: "16px",
+              border: "3px solid var(--ink)",
+              background: selectedRole === "gm" ? "var(--mint)" : "var(--paper)",
+              color: "var(--ink)",
+              fontFamily: "Bebas Neue",
+              fontSize: "20px",
+              cursor: "pointer",
+              boxShadow: selectedRole === "gm" ? "4px 4px 0 var(--ink)" : "none"
+            }}
+          >
+            GM (GAME MASTER)
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedRole("player")}
+            style={{
+              padding: "16px",
+              border: "3px solid var(--ink)",
+              background: selectedRole === "player" ? "var(--mint)" : "var(--paper)",
+              color: "var(--ink)",
+              fontFamily: "Bebas Neue",
+              fontSize: "20px",
+              cursor: "pointer",
+              boxShadow: selectedRole === "player" ? "4px 4px 0 var(--ink)" : "none"
+            }}
+          >
+            PC (PLAYER)
+          </button>
+        </div>
+
+        <button type="button" onClick={submit}>ENTER CAMPAIGN</button>
       </section>
     </main>
   );
@@ -79,11 +95,15 @@ function App() {
   const dirty = useRef(false);
   const isGm = role === "gm";
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (forcedRole?: Role) => {
     try {
       const result = await getCampaign();
       setCampaign(result.campaign);
-      setRole(result.role);
+      if (forcedRole) {
+        setRole(forcedRole);
+      } else if (result.role) {
+        setRole(result.role);
+      }
       setAuthenticated(true);
     } catch {
       setAuthenticated(false);
@@ -154,8 +174,45 @@ function App() {
     setAuthenticated(false);
   };
 
+  // Shadow controls
+  const moveShadow = (index: number, direction: "left" | "right") => {
+    updateGm((next) => {
+      const targetIndex = direction === "left" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= next.shadows.length) return;
+      const temp = next.shadows[index];
+      next.shadows[index] = next.shadows[targetIndex];
+      next.shadows[targetIndex] = temp;
+    });
+  };
+
+  const addShadow = () => {
+    updateGm((next) => {
+      next.shadows.push({
+        id: crypto.randomUUID(),
+        name: `Shadow ${next.shadows.length + 1}`,
+        hp: 100,
+        threat: 1,
+        status: "Normal"
+      });
+    });
+  };
+
+  const removeShadow = (index: number) => {
+    updateGm((next) => {
+      next.shadows.splice(index, 1);
+    });
+  };
+
+  // Clear map pins button handler
+  const clearMapPins = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    updateGm((next) => {
+      next.map.pins = [];
+    });
+  };
+
   if (authenticated === null) return <main className="loading-screen">LOADING CAMPAIGN…</main>;
-  if (!authenticated) return <Login onReady={load} />;
+  if (!authenticated) return <Login onReady={(chosenRole) => { setRole(chosenRole); setAuthenticated(true); load(chosenRole); }} />;
   if (!campaign) return <main className="loading-screen">SYNCING SHARED STATE…</main>;
 
   const c = campaign;
@@ -183,7 +240,7 @@ function App() {
           <div className="week-strip">{weekdays.map((day, index) => <button disabled={!isGm} className={`day ${c.calendar.selectedDay === index ? "active" : ""}`} onClick={() => updateGm((next) => next.calendar.selectedDay = index)} key={day}><span>{day}</span><strong>{c.calendar.weekStart + index}</strong></button>)}</div>
           <button className="week-arrow" disabled={!isGm} onClick={() => updateGm((next) => next.calendar.weekStart = Math.min(25, next.calendar.weekStart + 7))}>›</button>
         </div>
-        <div className="session-chip"><span>{role.toUpperCase()}</span><strong>{notice || "LIVE"}</strong><button onClick={handleSignOut}>SIGN OUT</button></div>
+        <div className="session-chip"><span>{role.toUpperCase()}</span><strong>{notice || "LIVE"}</strong><button onClick={handleSignOut}>SWITCH ROLE</button></div>
       </header>
 
       <div className="content">
@@ -204,7 +261,15 @@ function App() {
                 </label>
                 <div className="enemy-status"><span>TL</span><input disabled={!isGm} type="number" value={shadow.threat} onChange={(event) => updateGm((next) => next.shadows[index].threat = Number(event.target.value))} /><input disabled={!isGm} value={shadow.status} onChange={(event) => updateGm((next) => next.shadows[index].status = event.target.value)} /></div>
                 {isGm && <input className="enemy-hp-control" type="number" min="0" max="100" value={shadow.hp} onChange={(event) => updateGm((next) => next.shadows[index].hp = Number(event.target.value))} />}
+                
+                {/* Shadow controls for GM */}
+                {isGm && <div className="shadow-controls">
+                  <button onClick={() => moveShadow(index, "left")} disabled={index === 0}>‹</button>
+                  <button onClick={() => removeShadow(index)}>×</button>
+                  <button onClick={() => moveShadow(index, "right")} disabled={index === c.shadows.length - 1}>›</button>
+                </div>}
               </div>)}
+              {isGm && <button className="add-shadow-btn" onClick={addShadow}>+ ADD SHADOW</button>}
               {isGm && <label className="background-upload"><strong>SWAP BACKGROUND</strong><span>JPG, PNG, WEBP</span><input type="file" accept="image/*" onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.battle.background = url))} /></label>}
               <div className="objective-tag"><span>OBJECTIVE</span><input disabled={!isGm} value={c.battle.objective} onChange={(event) => updateGm((next) => next.battle.objective = event.target.value)} /></div>
               <div className="turn-tag"><span>ROUND</span><input disabled={!isGm} type="number" value={c.battle.round} onChange={(event) => updateGm((next) => next.battle.round = Number(event.target.value))} /></div>
@@ -222,6 +287,7 @@ function App() {
               {isGm && <label className="background-upload"><strong>SWAP MAP IMAGE</strong><input type="file" accept="image/*" onChange={(event) => upload(event, "gm", (url) => updateGm((next) => next.map.background = url))} /></label>}
               {c.map.pins.map((pin, index) => <div className="campaign-pin" style={{ left: `${pin.x}%`, top: `${pin.y}%` }} key={pin.id}><i /><span>{pin.label}</span><div className="pin-tooltip">{isGm ? <><input value={pin.tooltip} onChange={(event) => updateGm((next) => next.map.pins[index].tooltip = event.target.value)} /><button onClick={() => updateGm((next) => next.map.pins.splice(index, 1))}>×</button></> : pin.tooltip}</div></div>)}
               <div className="map-help"><strong>{isGm ? "CLICK TO DROP PIN" : "CAMPAIGN MAP"}</strong><span>{c.map.pins.length} locations marked</span></div>
+              {isGm && <button className="clear-pins" onClick={clearMapPins}>CLEAR ALL PINS</button>}
             </div>}
           </div>
           <div className="map-footer"><div><Mark>1</Mark> {isGm ? "GM EDIT MODE" : "PLAYER VIEW"}</div><div className="gm-note">SYNC: <strong>{notice || "LIVE"}</strong></div></div>

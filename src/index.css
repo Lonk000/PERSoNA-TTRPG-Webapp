@@ -403,4 +403,78 @@ button:disabled, input:disabled, textarea:disabled { cursor: default; }
   .app-shell { grid-template-rows: auto auto auto; }
   .session-chip { display: none; }
   .party-members { display: flex; }
+
+  /* Shadow Unit Controls */
+.shadow-controls {
+  position: absolute;
+  z-index: 10;
+  top: -24px;
+  display: flex;
+  gap: 3px;
+  background: var(--ink);
+  padding: 2px;
+  border: 1px solid var(--mint);
+}
+
+.shadow-controls button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: var(--mint);
+  color: var(--ink);
+  font-family: "Bebas Neue";
+  font-size: 14px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.shadow-controls button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.add-shadow-btn {
+  position: absolute;
+  z-index: 8;
+  right: 14px;
+  bottom: 50px;
+  padding: 6px 10px;
+  border: 2px solid var(--paper);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: "Bebas Neue";
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 var(--red);
+}
+
+.add-shadow-btn:hover {
+  background: var(--mint);
+  color: var(--ink);
+}
+
+/* Clear Pins Button Fix */
+.clear-pins {
+  position: absolute;
+  z-index: 12;
+  right: 12px;
+  bottom: 12px;
+  padding: 8px 12px;
+  border: 2px solid var(--paper);
+  color: var(--paper);
+  background: var(--ink);
+  font-family: "Bebas Neue";
+  font-size: 14px;
+  letter-spacing: .09em;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 var(--red);
+  pointer-events: auto;
+}
+
+.clear-pins:hover {
+  color: var(--ink);
+  background: var(--mint);
+}
 }
